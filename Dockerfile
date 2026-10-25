@@ -9,7 +9,7 @@ COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp dependency:go-offline
 COPY src src
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests package \
-    && java -Djarmode=tools -jar target/vaccine-backend-*.jar extract --layers --launcher --destination extracted
+    && java -Djarmode=tools -jar target/vaccine-warehouse-*.jar extract --layers --launcher --destination extracted
 
 # ---- runtime: JRE only, non-root, layered jar ----
 FROM eclipse-temurin:21.0.12.1_1-jre-noble
