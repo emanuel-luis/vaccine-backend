@@ -1,0 +1,49 @@
+[project]
+name = "vaccine-elt"
+version = "0.2.0"
+description = "Loads public reference data and seeded synthetic vaccination events into the warehouse's raw schema"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Emanuel Luis" }]
+dependencies = ["psycopg[binary]>=3.3,<4"]
+
+[project.scripts]
+vaccine-elt = "vaccine_elt.cli:main"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.140",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-timeout>=2.4",
+    "ruff>=0.14",
+    "testcontainers[postgres]>=4.15",
+]
+dbt = ["dbt-core>=1.12,<1.13", "dbt-postgres>=1.11,<1.12"]
+
+[tool.uv]
+default-groups = ["dev", "dbt"]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+extend-select = ["B", "BLE", "DTZ", "I", "UP"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --strict-config -m 'not db and not external'"
+testpaths = ["tests"]
+timeout = 300
+markers = [
+    "db: needs Docker (Testcontainers Postgres); run with -m db",
+    "external: calls public government endpoints; never in CI",
+]
