@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (phase 4: analytical API)
+- Read-only endpoints over the marts with `JdbcClient` and Java records:
+  `/api/v1/doses/by-state-month`, `/api/v1/doses/by-age-band`, `/api/v1/coverage`,
+  `/api/v1/health-units/{cnesCode}/history`, `/api/v1/runs/latest`; `{data, meta}` envelope,
+  validated parameters, RFC 9457 problem details (400, 404, 503 while marts are not built).
+- `scripts/smoke.sh` and `make smoke`; the CI end-to-end job calls every endpoint and uploads the
+  dbt docs.
+- `security.yml` (OSV-Scanner on `pom.xml` and `elt/uv.lock`) and Dependabot for Maven, uv,
+  GitHub Actions and Docker.
+
+### Removed
+- Legacy endpoints `/api/dimension`, `/api/dimension/render`, `/api/fact`, the Mustache page, the
+  JPA entities, Lombok, the `src/python` loaders and their CSVs; Flyway `V5` drops the legacy
+  tables (the 2023 unit list lives on as the vendored CNES snapshot).
+
 ### Added (phase 3: synthetic facts and analytics marts)
 - `vaccine-elt generate --rows --seed --start --end`: seeded, deterministic vaccination events,
   lots and receipts following the 2026 childhood schedule, written in one transaction with the
