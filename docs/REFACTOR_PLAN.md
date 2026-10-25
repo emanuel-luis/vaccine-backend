@@ -134,7 +134,7 @@ it.
 - dbt: `stg_synthetic__*`, `int_vaccinations_enriched` (point-in-time join to the unit version),
   `dim_vaccine_lot`, `fact_vaccination`, `fact_vaccine_receipt`, and analytics marts
   `mart_doses_by_state_month`, `mart_doses_by_age_band`, `mart_coverage_by_state`.
-- Coverage = 100 x indicator doses in the year to children of the target age / (Censo 2022
+- Coverage = 100 x indicator doses in the year to children at most the target age / (Censo 2022
   population of that age in the state x sample_fraction). The official indicator uses SINASC live
   births; ours uses a constant census denominator, and every row says the numerator is synthetic.
 - Tests: generic tests on every key, `unique_combination_of_columns` on fact grains, singular
