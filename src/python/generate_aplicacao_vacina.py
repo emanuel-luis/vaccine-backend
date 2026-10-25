@@ -5,17 +5,19 @@ import random
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.sql import insert, table, column
+import os
 import uuid
+from pathlib import Path
 
-engine = create_engine(
-    "postgresql+psycopg2://postgres:mysecretpassword@localhost:5432/backend",
-    isolation_level="AUTOCOMMIT",
-)
+DATA_DIR = Path(__file__).resolve().parent / "data"
+
+# Connection from the libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD) or DATABASE_URL.
+engine = create_engine(os.environ.get("DATABASE_URL", "postgresql+psycopg2://"), isolation_level="AUTOCOMMIT")
 
 
-df0 = pd.read_csv("data/unidade_basica.csv")
-df1 = pd.read_csv("data/municipio.csv")
-df2 = pd.read_csv("data/estado.csv")
+df0 = pd.read_csv(DATA_DIR / "unidade_basica.csv")
+df1 = pd.read_csv(DATA_DIR / "municipio.csv")
+df2 = pd.read_csv(DATA_DIR / "estado.csv")
 
 df = df0.merge(
     df1, how="inner", left_on="id_municipio", right_on="id", suffixes=("", "_m0")
