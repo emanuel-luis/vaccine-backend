@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: int_health_unit_versions
+    description: >
+      SCD2 versions of CNES units. Grain: one row per cnes_code and valid_from. A new version starts
+      when unit_name, neighborhood, municipality_code or is_active changes between consecutive
+      extracts. A unit missing from a later extract gets a version with is_active false and its
+      last known attributes. The first version of each unit starts at var dim_date_start (assumption:
+      the unit existed before the first extract); later versions start at the extract date.
+      street, unit_type and coordinates are type 1: the latest non-null value on every version.
+      A CNES municipality code with no IBGE match becomes municipality_code 0 (Unknown).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cnes_code, valid_from]
+    columns:
+      - name: cnes_code
+        description: 7-digit CNES establishment code.
+        data_tests:
+          - not_null
+      - name: valid_from
+        description: First day the version applies, inclusive.
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: First day the version no longer applies (exclusive); 9999-12-31 when current.
+        data_tests:
+          - not_null
+      - name: is_current
+        description: True for the latest version of the unit.
+        data_tests:
+          - not_null
+      - name: unit_name
+        description: Unit name in this version.
+      - name: neighborhood
+        description: Neighborhood in this version.
+      - name: municipality_code
+        description: 7-digit IBGE municipality code in this version; 0 when CNES code has no match.
+        data_tests:
+          - not_null
+      - name: is_active
+        description: Whether the unit was active in this version.
+        data_tests:
+          - not_null
+      - name: street
+        description: Type 1. Latest known street.
+      - name: unit_type_code
+        description: Type 1. Latest known CNES unit type code.
+      - name: unit_type_label
+        description: >
+          Type 1. Label from the cnes_unit_types seed, "Other (CNES type N)" for an unlisted code,
+          null when the type is unknown.
+      - name: latitude
+        description: Type 1. Latest known latitude.
+      - name: longitude
+        description: Type 1. Latest known longitude.

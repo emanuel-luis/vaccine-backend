@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "cnes_primary_care_2023-06-02",
+      "path": "cnes_primary_care_2023-06-02.csv.gz",
+      "table": "raw.cnes_unit_snapshot",
+      "publisher": "Ministério da Saúde",
+      "source_url": "https://dados.gov.br/dados/conjuntos-dados/unidades-basicas-de-saude-ubs2",
+      "documentation_url": "https://opendatasus.saude.gov.br/dataset/cadastro-nacional-de-estabelecimentos-de-saude-cnes",
+      "license_note": "Ministry of Health open data (dadosabertos.saude.gov.br, formerly opendatasus). Third parties report it as public domain with attribution; the portal's license field could not be retrieved automatically and is still to be confirmed (see docs/data-sources.md).",
+      "citation": "Ministério da Saúde, Unidades Básicas de Saúde (UBS), dados abertos; extraído em 2023 para a versão original deste projeto.",
+      "retrieved_at": "2026-10-25T18:03:04Z",
+      "snapshot_date": "2023-06-02",
+      "transform": "Converted from the project's 2023 unidade_basica.csv (provenance approximate: the UBS open dataset as of the first commit, 2023-06-02); CNES codes zero-padded; no unit type or coordinates in the source; every unit active.",
+      "columns": [
+        "snapshot_date",
+        "cnes_code",
+        "municipality_code6",
+        "unit_name",
+        "neighborhood",
+        "street",
+        "unit_type_code",
+        "is_active",
+        "latitude",
+        "longitude"
+      ],
+      "rows": 39767,
+      "sha256": "510b0cd9407c095d884bafd197012edc2a39344eb32c4e4718fbee5bcb76ddce",
+      "source_last_modified": null
+    },
+    {
+      "id": "cnes_primary_care_2026-10-24",
+      "path": "cnes_primary_care_2026-10-24.csv.gz",
+      "table": "raw.cnes_unit_snapshot",
+      "publisher": "Ministério da Saúde",
+      "source_url": "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/CNES/cnes_estabelecimentos_csv.zip",
+      "documentation_url": "https://opendatasus.saude.gov.br/dataset/cadastro-nacional-de-estabelecimentos-de-saude-cnes",
+      "license_note": "Ministry of Health open data (dadosabertos.saude.gov.br, formerly opendatasus). Third parties report it as public domain with attribution; the portal's license field could not be retrieved automatically and is still to be confirmed (see docs/data-sources.md).",
+      "citation": "Ministério da Saúde, CNES - Cadastro Nacional de Estabelecimentos de Saúde, extração de dados abertos de 2026-10-24.",
+      "retrieved_at": "2026-10-25T18:03:39Z",
+      "snapshot_date": "2026-10-24",
+      "transform": "Kept TP_UNIDADE 1 and 2 (primary care) plus units present in earlier snapshots; CO_CNES zero-padded to 7 digits; street = NO_LOGRADOURO - NU_ENDERECO; is_active = CO_MOTIVO_DESAB empty; coordinates outside Brazil blanked; phone, e-mail and CNPJ columns dropped.",
+      "columns": [
+        "snapshot_date",
+        "cnes_code",
+        "municipality_code6",
+        "unit_name",
+        "neighborhood",
+        "street",
+        "unit_type_code",
+        "is_active",
+        "latitude",
+        "longitude"
+      ],
+      "rows": 59971,
+      "sha256": "c26f38964a6d0b4a43895b2110cd6ff24dd5aa512258ddd8e17fa32145678231",
+      "source_last_modified": "2026-10-24T05:57:31Z"
+    },
+    {
+      "id": "ibge_census2022_population_age0_6",
+      "path": "ibge_census2022_population_age0_6.csv.gz",
+      "table": "raw.ibge_census_population",
+      "publisher": "IBGE",
+      "source_url": "https://apisidra.ibge.gov.br/values/t/9514/n6/all/v/93/p/2022/c2/{4,5}/c287/6557,6558,6559,6560,6561,6562,6563/c286/113635",
+      "documentation_url": "https://sidra.ibge.gov.br/tabela/9514",
+      "license_note": "Public data published by IBGE; reuse with attribution to IBGE as the source. IBGE's terms page could not be retrieved automatically, so the exact license text is still to be confirmed (see docs/data-sources.md).",
+      "citation": "IBGE, Censo Demográfico 2022, SIDRA tabela 9514 (população residente, por sexo e idade).",
+      "retrieved_at": "2026-10-25T18:03:25Z",
+      "snapshot_date": "2022-08-01",
+      "transform": "One SIDRA call per sex (50,000-value cap); ages 0-6; '-' read as 0.",
+      "columns": [
+        "census_year",
+        "municipality_code",
+        "sex",
+        "age_years",
+        "population"
+      ],
+      "rows": 77980,
+      "sha256": "ce901b0172da86cffbe4ba68a01a6c3b795a085613446b9d406f41598b884190",
+      "source_last_modified": null
+    },
+    {
+      "id": "ibge_municipalities",
+      "path": "ibge_municipalities.csv.gz",
+      "table": "raw.ibge_municipality",
+      "publisher": "IBGE",
+      "source_url": "https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado",
+      "documentation_url": "https://servicodados.ibge.gov.br/api/docs/localidades",
+      "license_note": "Public data published by IBGE; reuse with attribution to IBGE as the source. IBGE's terms page could not be retrieved automatically, so the exact license text is still to be confirmed (see docs/data-sources.md).",
+      "citation": "IBGE, API de Localidades (municípios, view=nivelado), acesso em 2026-10-25.",
+      "retrieved_at": "2026-10-25T18:03:19Z",
+      "snapshot_date": "2026-10-25",
+      "transform": "Flattened view=nivelado; kept municipality, state and region codes and names.",
+      "columns": [
+        "municipality_code",
+        "municipality_name",
+        "state_code",
+        "state_abbr",
+        "state_name",
+        "region_code",
+        "region_abbr",
+        "region_name"
+      ],
+      "rows": 5571,
+      "sha256": "5b92697fa63218b94015366c11f0fe132b668d0b7f3d94ff0a2b2fbce3e845c0",
+      "source_last_modified": null
+    }
+  ]
+}
