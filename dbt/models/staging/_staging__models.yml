@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: stg_ibge__municipalities
+    description: >
+      IBGE municipalities, typed. Grain: one row per municipality_code (7-digit IBGE code).
+    columns:
+      - name: municipality_code
+        description: 7-digit IBGE municipality code, primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: municipality_name
+        description: Municipality name.
+        data_tests:
+          - not_null
+      - name: state_code
+        description: IBGE state code.
+      - name: state_abbr
+        description: Two-letter state abbreviation.
+      - name: state_name
+        description: State name.
+      - name: region_code
+        description: IBGE region code.
+      - name: region_abbr
+        description: Region abbreviation.
+      - name: region_name
+        description: Region name.
+
+  - name: stg_ibge__census_population
+    description: >
+      Censo 2022 resident population, typed. Grain: census_year x municipality_code x sex x
+      age_years.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [census_year, municipality_code, sex, age_years]
+    columns:
+      - name: census_year
+        description: Census year.
+        data_tests:
+          - not_null
+      - name: municipality_code
+        description: 7-digit IBGE municipality code.
+        data_tests:
+          - not_null
+      - name: sex
+        description: F or M.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'M']
+      - name: age_years
+        description: Single year of completed age, 0 to 6.
+      - name: population
+        description: Resident population of that cell.
+        data_tests:
+          - not_null
+
+  - name: stg_cnes__unit_snapshots
+    description: >
+      CNES unit extracts, typed; blank text becomes null. Grain: snapshot_date x cnes_code. The
+      municipality code stays 6-digit here.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_date, cnes_code]
+    columns:
+      - name: snapshot_date
+        description: Date of the CNES extract.
+        data_tests:
+          - not_null
+      - name: cnes_code
+        description: 7-digit CNES establishment code.
+        data_tests:
+          - not_null
+      - name: municipality_code6
+        description: 6-digit IBGE municipality code as CNES writes it.
+        data_tests:
+          - not_null
+      - name: unit_name
+        description: Unit name as of the extract.
+      - name: neighborhood
+        description: Neighborhood as of the extract.
+      - name: street
+        description: Street address; its format differs between extracts.
+      - name: unit_type_code
+        description: CNES unit type code, null in the 2023 extract.
+      - name: is_active
+        description: Whether the unit is active in the extract.
+        data_tests:
+          - not_null
+      - name: latitude
+        description: Latitude, null in the 2023 extract.
+      - name: longitude
+        description: Longitude, null in the 2023 extract.
