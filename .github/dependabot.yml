@@ -25,6 +25,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Stay on the Java 21 LTS line (DECISIONS 2): only patch/minor updates of the base images.
+      - dependency-name: eclipse-temurin
+        update-types: ["version-update:semver-major"]
     groups:
       images:
         patterns: ["*"]
