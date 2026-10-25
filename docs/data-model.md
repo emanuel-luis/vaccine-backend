@@ -248,17 +248,24 @@ reported as a lost dose.
 
 ## API mapping
 
-| Endpoint | Reads |
-| --- | --- |
-| `POST /api/v1/doses` | writes `raw.live_dose`, `live.dose_daily`, `ops.ingest_reject`; validates against `marts.dim_vaccine` and `marts.dim_health_unit`; only when `VACCINE_INGEST_ENABLED` is true |
-| `GET /api/v1/dashboard/summary` | `marts.mart_doses_daily` + `live.dose_daily` above `batch_generation` (merged) |
-| `GET /api/v1/dashboard/doses/timeseries` | same merge, grouped by day, week or month |
-| `GET /api/v1/stream` | `text/event-stream` fed by `LISTEN dose_event, batch_event` |
-| `GET /api/v1/doses/by-state-month` | `marts.mart_doses_by_state_month` |
-| `GET /api/v1/doses/by-age-band` | `marts.mart_doses_by_age_band` |
-| `GET /api/v1/coverage` | `marts.mart_coverage_by_state` |
-| `GET /api/v1/health-units/{cnesCode}/history` | `marts.dim_health_unit` joined to `marts.dim_municipality` |
-| `GET /api/v1/runs/latest` | `ops.load_run`, `ops.load_run_table` |
+Roles: P = profissional, G = gestor, A = data-admin, I = dose-ingest (service). Scope: S = rows
+restricted to the caller's `region_scope` claim (`BR`, `UF:<abbr>`, `MUN:<7-digit IBGE>`) and a
+`region` parameter must lie inside it (403 `region_out_of_scope`); S>=UF = same at state grain,
+municipality callers get 403; a token without a valid `region_scope` gets 403 `missing_region_scope`.
+Without a token every endpoint except health, `/v3/api-docs` and Swagger UI answers 401.
+
+| Endpoint | Roles | Scope | Reads |
+| --- | --- | --- | --- |
+| `POST /api/v1/doses` | I | none | writes `raw.live_dose`, `live.dose_daily`, `ops.ingest_reject` (client id = token `azp`); validates against `marts.dim_vaccine` and `marts.dim_health_unit` |
+| `GET /api/v1/me` | P G A | none | the token: username, name, roles, scope `{level, state, municipalityCode, label}` |
+| `GET /api/v1/dashboard/summary` | P G A | S | `marts.mart_doses_daily` + `live.dose_daily` above `batch_generation` (merged) |
+| `GET /api/v1/dashboard/doses/timeseries` | P G A | S | same merge, grouped by day, week or month |
+| `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event`; filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
+| `GET /api/v1/doses/by-state-month` | P G A | S>=UF | `marts.mart_doses_by_state_month` |
+| `GET /api/v1/doses/by-age-band` | P G A | S>=UF | `marts.mart_doses_by_age_band` |
+| `GET /api/v1/coverage` | P G A | S>=UF | `marts.mart_coverage_by_state` |
+| `GET /api/v1/health-units/{cnesCode}/history` | P G A | S (every version's municipality) | `marts.dim_health_unit` joined to `marts.dim_municipality` |
+| `GET /api/v1/runs/latest` | A | none | `ops.load_run`, `ops.load_run_table` |
 
 The Java records in `src/main/java/.../analytics/AnalyticsRows.java` and the test fixtures in
 `src/test/resources/fixtures/marts.sql` mirror these columns.

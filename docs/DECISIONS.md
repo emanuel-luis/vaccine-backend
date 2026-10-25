@@ -46,5 +46,10 @@
 | 42 | 2026-10-25 | Web serving | nginx-unprivileged, same-origin `/api`, runtime `/config.json` | No CORS; one image for every environment |
 | 43 | 2026-10-25 | Simulator | Python, generator inputs, one person per dose, stdlib HTTP | Valid by construction |
 | 44 | 2026-10-25 | Campaigns and exports | `app.campaign` with optimistic locking; CSV `;`, UTF-8 BOM, decimal comma | Excel pt-BR users |
-| 45 | 2026-10-25 | PR1 window | Ingest disabled unless `VACCINE_INGEST_ENABLED`; removed in PR2 | No open write endpoint on main |
+| 45 | 2026-10-25 | PR1 window | Ingest disabled unless `VACCINE_INGEST_ENABLED`; removed in PR2 (done: the endpoint needs the `dose-ingest` role) | No open write endpoint on main |
 | 46 | 2026-10-25 | UI language | pt-BR UI text; code and docs stay English | Audience is SUS staff |
+| 47 | 2026-10-25 | Resource-server starter | `spring-boot-starter-security-oauth2-resource-server` (+ `spring-boot-starter-security`; tests: `spring-boot-starter-security-test` and `...-oauth2-resource-server-test`) | The Boot 4 name found in the 4.1.2 BOM; the old `spring-boot-starter-oauth2-resource-server` is a deprecated alias |
+| 48 | 2026-10-25 | UF codes | Static UF abbreviation to IBGE code table (first two digits of a municipality code) in `security/UfCodes`; scope claims naming an unknown state are invalid | Scope checks need no database lookup and cannot fail with the marts down |
+| 49 | 2026-10-25 | Scope enforcement | `ScopeGuard` (static, on the token) returns the `RegionFilter` repositories use; no `region` means the caller's whole scope; wider or elsewhere is 403 `region_out_of_scope`; state-grain endpoints close to municipality callers; a unit history needs every version inside the scope | Deny by default; the existing batch endpoints keep their shape |
+| 50 | 2026-10-25 | Realm hardening | `region_scope` is declared in the user profile, viewable and editable by admins only; `sslRequired` is `none` (local HTTP demo realm) | A user must never widen their own scope; the realm is for localhost only |
+| 51 | 2026-10-25 | OpenAPI drift check | `OpenApiSpecIT` needs no database (Flyway off, LISTEN thread mocked); springdoc writes sorted keys; `make openapi` rewrites `docs/api/openapi.json` | The spec can be regenerated and checked anywhere without Docker |

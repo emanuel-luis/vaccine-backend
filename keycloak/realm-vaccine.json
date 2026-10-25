@@ -1,0 +1,337 @@
+{
+  "realm": "vaccine",
+  "displayName": "Vaccine warehouse (synthetic demo)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      {
+        "name": "profissional",
+        "description": "Health professional: reads data inside the region scope"
+      },
+      {
+        "name": "gestor",
+        "description": "Manager: reads data inside the region scope"
+      },
+      {
+        "name": "data-admin",
+        "description": "Data administrator: reads data and ELT run metadata"
+      },
+      {
+        "name": "dose-ingest",
+        "description": "Service role: posts live doses (simulator)"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "vaccine-api",
+      "description": "Claims the vaccine API reads: roles, audience, region_scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "audience vaccine-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "access.token.claim": "true",
+            "included.custom.audience": "vaccine-api"
+          }
+        },
+        {
+          "name": "region_scope",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "access.token.claim": "true",
+            "user.attribute": "region_scope",
+            "claim.name": "region_scope",
+            "jsonType.label": "String",
+            "multivalued": "false",
+            "aggregate.attrs": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "vaccine-web",
+      "name": "Vaccine web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email",
+        "vaccine-api"
+      ],
+      "optionalClientScopes": [],
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "${WEB_ORIGIN}",
+      "redirectUris": [
+        "${WEB_ORIGIN}/*",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      }
+    },
+    {
+      "clientId": "vaccine-simulator",
+      "name": "Dose simulator",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email",
+        "vaccine-api"
+      ],
+      "optionalClientScopes": [],
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${SIMULATOR_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "vaccine-smoke",
+      "name": "Smoke and speed checks",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email",
+        "vaccine-api"
+      ],
+      "optionalClientScopes": [],
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${SMOKE_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "region_scope BR",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "region_scope",
+            "claim.value": "BR",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-vaccine-simulator",
+      "enabled": true,
+      "serviceAccountClientId": "vaccine-simulator",
+      "realmRoles": [
+        "dose-ingest"
+      ]
+    },
+    {
+      "username": "service-account-vaccine-smoke",
+      "enabled": true,
+      "serviceAccountClientId": "vaccine-smoke",
+      "realmRoles": [
+        "gestor",
+        "data-admin"
+      ]
+    },
+    {
+      "username": "profissional.salvador",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "profissional.salvador@example.org",
+      "firstName": "Profissional",
+      "lastName": "Salvador",
+      "attributes": {
+        "region_scope": [
+          "MUN:2927408"
+        ]
+      },
+      "realmRoles": [
+        "profissional"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "profissional.bahia",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "profissional.bahia@example.org",
+      "firstName": "Profissional",
+      "lastName": "Bahia",
+      "attributes": {
+        "region_scope": [
+          "UF:BA"
+        ]
+      },
+      "realmRoles": [
+        "profissional"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "gestor.bahia",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "gestor.bahia@example.org",
+      "firstName": "Gestor",
+      "lastName": "Bahia",
+      "attributes": {
+        "region_scope": [
+          "UF:BA"
+        ]
+      },
+      "realmRoles": [
+        "gestor"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "gestor.nacional",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "gestor.nacional@example.org",
+      "firstName": "Gestor",
+      "lastName": "Nacional",
+      "attributes": {
+        "region_scope": [
+          "BR"
+        ]
+      },
+      "realmRoles": [
+        "gestor"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "admin.dados",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin.dados@example.org",
+      "firstName": "Admin",
+      "lastName": "Dados",
+      "attributes": {
+        "region_scope": [
+          "BR"
+        ]
+      },
+      "realmRoles": [
+        "data-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"validations\":{\"length\":{\"max\":255},\"email\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false,\"required\":{\"roles\":[\"user\"]}},{\"name\":\"firstName\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false,\"required\":{\"roles\":[\"user\"]}},{\"name\":\"lastName\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false,\"required\":{\"roles\":[\"user\"]}},{\"name\":\"region_scope\",\"validations\":{\"pattern\":{\"pattern\":\"^(BR|UF:[A-Z]{2}|MUN:[0-9]{7})$\",\"error-message\":\"region_scope must be BR, UF:<UF> or MUN:<7-digit IBGE code>\"}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}]}"
+          ]
+        }
+      }
+    ]
+  }
+}

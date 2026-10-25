@@ -86,12 +86,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: elt/uv.lock
-      - name: Enable dose ingest (no authentication yet, so it is off by default)
-        run: |
-          make env
-          echo >> .env
-          echo "VACCINE_INGEST_ENABLED=true" >> .env
-      - name: Stack up, load reference data, generate 20k events, dbt build, reconcile, call every endpoint
+      - name: Stack up (Postgres, Keycloak, API), load reference data, generate 20k events, dbt build, reconcile, call every endpoint
         run: make demo ROWS=20000 SEED=42
       - name: Speed layer (post doses, dbt build, reconcile)
         run: make speed-check
