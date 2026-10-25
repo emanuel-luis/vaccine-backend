@@ -8,14 +8,23 @@ spring:
     username: vaccine
   flyway:
     enabled: true
-    # History lives in `ops`; migrations also own `raw`. dbt owns `staging`, `intermediate`,
-    # `marts` and `reference`; the API only reads `marts` and `ops`.
+    # History lives in `ops`; migrations also own `raw`, `live` and `ops`. dbt owns `staging`,
+    # `intermediate`, `marts` and `reference`. The API reads `marts`, `ops` and `live`, and writes
+    # only raw.live_dose, live.dose_daily and ops.ingest_reject (POST /api/v1/doses).
     default-schema: ops
     schemas: ops
     create-schemas: true
   mvc:
     problemdetails:
       enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+vaccine:
+  ingest:
+    # No authentication before PR2: POST /api/v1/doses is 404 unless this is true (env VACCINE_INGEST_ENABLED).
+    enabled: ${VACCINE_INGEST_ENABLED:false}
 
 management:
   endpoints:

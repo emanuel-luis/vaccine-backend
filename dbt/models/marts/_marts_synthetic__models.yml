@@ -40,8 +40,8 @@ models:
 
   - name: fact_vaccination
     description: >
-      One dose given to one synthetic person at one unit on one date (synthetic data). Grain:
-      vaccination_id; each person gets each vaccine dose at most once. health_unit_key is the unit
+      One dose given to one synthetic person at one unit on one date (synthetic data, generator
+      events plus absorbed live doses). Grain: vaccination_id; each person gets each vaccine dose at most once. health_unit_key is the unit
       version valid on the dose date. A failed lookup points to the Unknown member.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
@@ -126,6 +126,21 @@ models:
           - accepted_values:
               arguments:
                 values: [1]
+      - name: record_source
+        description: generator for batch events, live for doses posted to the API.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['generator', 'live']
+      - name: batch_generation
+        description: >
+          W, the live generation watermark this build absorbed (live rows with generation <= W);
+          the same on every row.
+        data_type: bigint
+        data_tests:
+          - not_null
 
   - name: fact_vaccine_receipt
     description: >

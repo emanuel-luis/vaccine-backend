@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,7 +46,7 @@ class ApplicationIT {
     void flywayAppliedEveryMigrationAndDroppedTheLegacySchema() {
         Integer applied = jdbc.queryForObject(
                 "SELECT count(*) FROM ops.flyway_schema_history WHERE success AND version IS NOT NULL", Integer.class);
-        assertThat(applied).isEqualTo(5);
+        assertThat(applied).isEqualTo(7);
         assertThat(jdbc.queryForObject("SELECT to_regclass('public.unidade_basica') IS NULL", Boolean.class))
                 .isTrue();
         assertThat(jdbc.queryForObject("SELECT to_regclass('raw.vaccination_event') IS NOT NULL", Boolean.class))
@@ -65,6 +67,9 @@ class ApplicationIT {
                 .andExpect(jsonPath("$.meta.source").value("marts.mart_doses_by_state_month"))
                 .andExpect(jsonPath("$.meta.synthetic").value(true))
                 .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.meta.layer").value("batch"))
+                .andExpect(jsonPath("$.meta.suppressedCells").value(0))
+                .andExpect(jsonPath("$.meta.batchGeneration").value(nullValue()))
                 .andExpect(jsonPath("$.data[0].stateAbbr").value("MA"))
                 .andExpect(jsonPath("$.data[0].monthStart").value("2024-03-01"))
                 .andExpect(jsonPath("$.data[0].doses").value(12));
@@ -139,7 +144,14 @@ class ApplicationIT {
         mvc.perform(get("/api/v1/coverage"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(header().string("Retry-After", "30"))
                 .andExpect(jsonPath("$.detail", containsString("make demo")));
+    }
+
+    @Test
+    void doseIngestIsNotMappedUnlessEnabled() throws Exception {
+        mvc.perform(post("/api/v1/doses").contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

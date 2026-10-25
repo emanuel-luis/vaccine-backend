@@ -10,14 +10,25 @@ import java.util.List;
  */
 public record ApiResponse<T>(List<T> data, Meta meta) {
 
+    public static final String LAYER_BATCH = "batch";
+    public static final String LAYER_MERGED = "merged";
+
     /**
      * @param source warehouse table the rows were read from
      * @param synthetic true when the measures come from the seeded generator, not real records
      * @param count number of rows in {@code data}
+     * @param layer {@code batch} (marts only) or {@code merged} (marts plus the live aggregate)
+     * @param batchGeneration generation the marts absorbed, null when it does not apply
+     * @param suppressedCells cells hidden by small-number suppression (0 until PR2+)
      */
-    public record Meta(String source, boolean synthetic, int count) {}
+    public record Meta(
+            String source, boolean synthetic, int count, String layer, Long batchGeneration, int suppressedCells) {}
 
     public static <T> ApiResponse<T> of(String source, boolean synthetic, List<T> data) {
-        return new ApiResponse<>(data, new Meta(source, synthetic, data.size()));
+        return new ApiResponse<>(data, new Meta(source, synthetic, data.size(), LAYER_BATCH, null, 0));
+    }
+
+    public static <T> ApiResponse<T> merged(String source, boolean synthetic, long batchGeneration, List<T> data) {
+        return new ApiResponse<>(data, new Meta(source, synthetic, data.size(), LAYER_MERGED, batchGeneration, 0));
     }
 }

@@ -20,7 +20,7 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
-	load-reference generate dbt-deps dbt-build demo smoke
+	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -78,7 +78,13 @@ dbt-deps: ## Install dbt packages (dbt_utils)
 dbt-build: env dbt-deps ## Build and test staging, intermediate and marts
 	$(WITH_PG) $(DBT) build $(DBT_DIRS)
 
-demo: up load-reference generate dbt-build smoke ## One command: stack, data, dbt marts, API answering
+reconcile: env ## Check live.dose_daily and the serving merge against the landing tables (exit 1 on a diff)
+	$(WITH_PG) $(UV) vaccine-elt reconcile
+
+demo: up load-reference generate dbt-build reconcile smoke ## One command: stack, data, dbt marts, reconciliation, API answering
 
 smoke: ## Call every API endpoint and require rows (stack and marts must be up)
 	bash scripts/smoke.sh $(API_URL)
+
+speed-check: ## Post 3 doses, check today +3, run dbt-build + reconcile, check the total is unchanged (needs VACCINE_INGEST_ENABLED=true)
+	bash scripts/speed-check.sh $(API_URL)
