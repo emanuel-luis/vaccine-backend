@@ -86,8 +86,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: elt/uv.lock
-      - name: Stack up, load reference data, dbt build, call the API
-        run: make demo
+      - name: Stack up, load reference data, generate 20k events, dbt build, call the API
+        run: make demo ROWS=20000 SEED=42
       - name: Load metadata
         if: always()
         run: >

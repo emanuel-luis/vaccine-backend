@@ -8,6 +8,8 @@ DBT := $(UV) dbt
 # dbt takes these options after the subcommand only: `$(DBT) <command> $(DBT_DIRS)`.
 DBT_DIRS := --project-dir dbt --profiles-dir dbt
 API_URL ?= http://localhost:8080
+ROWS ?= 200000
+SEED ?= 42
 
 # Load .env and map it to the libpq variables read by the ELT, dbt and the legacy loader, so the
 # password is defined once (in .env).
@@ -18,7 +20,7 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs seed \
-	load-reference dbt-deps dbt-build demo
+	load-reference generate dbt-deps dbt-build demo
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -71,12 +73,15 @@ seed: env ## Load the legacy dimension CSVs (legacy endpoints) into the running 
 load-reference: env ## Verify the vendored public snapshots and load them into raw
 	$(WITH_PG) $(UV) vaccine-elt load-reference
 
+generate: env ## Replace the synthetic events, lots and receipts (ROWS, SEED)
+	$(WITH_PG) $(UV) vaccine-elt generate --rows $(ROWS) --seed $(SEED)
+
 dbt-deps: ## Install dbt packages (dbt_utils)
 	$(NO_DB) $(DBT) deps $(DBT_DIRS)
 
 dbt-build: env dbt-deps ## Build and test staging, intermediate and marts
 	$(WITH_PG) $(DBT) build $(DBT_DIRS)
 
-demo: up seed load-reference dbt-build ## One command: stack, reference data, dbt marts, API answering
+demo: up seed load-reference generate dbt-build ## One command: stack, data, dbt marts, API answering
 	curl -fsS "$(API_URL)/actuator/health" && echo
 	curl -fsS "$(API_URL)/api/dimension?size=3" && echo
