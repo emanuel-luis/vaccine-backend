@@ -1,0 +1,296 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: One calendar day from var dim_date_start to dim_date_end. No Unknown member.
+    columns:
+      - name: date_key
+        description: Date as integer YYYYMMDD, primary key.
+        data_type: integer
+        data_tests:
+          - unique
+          - not_null
+      - name: date_day
+        description: Calendar date.
+        data_type: date
+        data_tests:
+          - unique
+          - not_null
+      - name: year
+        description: Calendar year.
+        data_type: integer
+      - name: quarter
+        description: Calendar quarter, 1 to 4.
+        data_type: integer
+      - name: month
+        description: Month number, 1 to 12.
+        data_type: integer
+      - name: month_name
+        description: English month name.
+        data_type: text
+      - name: year_month
+        description: Year and month as YYYY-MM.
+        data_type: text
+      - name: month_start
+        description: First day of the month.
+        data_type: date
+      - name: day_of_month
+        description: Day of the month, 1 to 31.
+        data_type: integer
+      - name: iso_day_of_week
+        description: ISO day of week, 1 (Monday) to 7 (Sunday).
+        data_type: integer
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+      - name: day_name
+        description: English day name.
+        data_type: text
+      - name: iso_week
+        description: ISO week number.
+        data_type: integer
+      - name: is_weekend
+        description: True on Saturday and Sunday.
+        data_type: boolean
+
+  - name: dim_municipality
+    description: >
+      One municipality, with state and region flattened in. Grain: municipality_code. Includes the
+      Unknown member (code 0).
+    columns:
+      - name: municipality_key
+        description: Surrogate key (uuid from municipality_code), primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: municipality_code
+        description: 7-digit IBGE municipality code; 0 for Unknown.
+        data_type: integer
+        data_tests:
+          - unique
+          - not_null
+      - name: municipality_code6
+        description: 6-digit code as CNES writes it (IBGE code without the check digit).
+        data_type: integer
+        data_tests:
+          - unique
+          - not_null
+      - name: municipality_name
+        description: Municipality name.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: state_code
+        description: IBGE state code.
+        data_type: integer
+      - name: state_abbr
+        description: Two-letter state abbreviation; NA for Unknown.
+        data_type: text
+      - name: state_name
+        description: State name.
+        data_type: text
+      - name: region_code
+        description: IBGE region code.
+        data_type: integer
+      - name: region_name
+        description: Region name.
+        data_type: text
+
+  - name: dim_health_unit
+    description: >
+      One CNES unit version (SCD2). Grain: cnes_code x valid_from. Tracked attributes: unit_name,
+      neighborhood, municipality_code, is_active. street, unit type and coordinates are type 1
+      (latest known value on every version). Includes the Unknown member (cnes_code 0000000).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cnes_code, valid_from]
+    columns:
+      - name: health_unit_key
+        description: Surrogate key (uuid from cnes_code and valid_from), primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: cnes_code
+        description: 7-digit CNES establishment code.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: unit_name
+        description: Unit name in this version.
+        data_type: text
+      - name: neighborhood
+        description: Neighborhood in this version.
+        data_type: text
+      - name: municipality_code
+        description: 7-digit IBGE municipality code in this version, foreign key to dim_municipality.
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_municipality')
+                field: municipality_code
+      - name: is_active
+        description: Whether the unit was active in this version.
+        data_type: boolean
+        data_tests:
+          - not_null
+      - name: street
+        description: Type 1. Latest known street.
+        data_type: text
+      - name: unit_type_code
+        description: Type 1. Latest known CNES unit type code.
+        data_type: integer
+      - name: unit_type_label
+        description: Type 1. Unit type label; "Other (CNES type N)" for an unlisted code.
+        data_type: text
+      - name: latitude
+        description: Type 1. Latest known latitude.
+        data_type: numeric(9,6)
+      - name: longitude
+        description: Type 1. Latest known longitude.
+        data_type: numeric(9,6)
+      - name: valid_from
+        description: First day the version applies, inclusive.
+        data_type: date
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: First day the version no longer applies (exclusive); 9999-12-31 when current.
+        data_type: date
+        data_tests:
+          - not_null
+      - name: is_current
+        description: True for the latest version of the unit.
+        data_type: boolean
+        data_tests:
+          - not_null
+
+  - name: dim_vaccine
+    description: >
+      One vaccine x dose of the childhood schedule, from the pni_child_schedule seed. Grain:
+      vaccine_code x dose_label. Includes the Unknown member.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [vaccine_code, dose_label]
+    columns:
+      - name: vaccine_key
+        description: Surrogate key (uuid from vaccine_code and dose_label), primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code, e.g. BCG; UNKNOWN for the Unknown member.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: vaccine_name
+        description: Vaccine name.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: dose_label
+        description: Dose label within the vaccine, e.g. D1, REF.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: dose_number
+        description: Ordinal of the dose within the vaccine.
+        data_type: integer
+      - name: recommended_age_days
+        description: Recommended age at the dose, in days.
+        data_type: integer
+      - name: min_age_days
+        description: Minimum valid age at the dose, in days.
+        data_type: integer
+      - name: max_age_days
+        description: Maximum age at the dose, in days.
+        data_type: integer
+      - name: min_interval_days
+        description: Minimum interval since the previous dose, in days; null for the first dose.
+        data_type: integer
+      - name: is_coverage_indicator
+        description: True when the dose counts toward the coverage indicator.
+        data_type: boolean
+        data_tests:
+          - not_null
+      - name: coverage_target_age_years
+        description: Age cohort in completed years the indicator measures; null when not an indicator dose.
+        data_type: integer
+
+  - name: dim_demographic
+    description: >
+      Junk dimension: sex x completed-year age band 0 to 6 (14 rows) plus the Unknown member
+      (sex U, null age band).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [sex, age_band_years]
+    columns:
+      - name: demographic_key
+        description: Surrogate key (uuid from sex and age_band_years), primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: sex
+        description: F or M; U for the Unknown member.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['F', 'M', 'U']
+      - name: sex_label
+        description: Female, Male or Unknown.
+        data_type: text
+      - name: age_band_years
+        description: Completed years of age, 0 to 6; null for Unknown.
+        data_type: integer
+      - name: age_band_label
+        description: Age band label in English.
+        data_type: text
+
+  - name: fact_population
+    description: >
+      Census resident population. Grain: municipality x sex x single-year age (0-6) x census year,
+      i.e. municipality_key x demographic_key x census_year.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [municipality_key, demographic_key, census_year]
+    columns:
+      - name: municipality_key
+        description: Foreign key to dim_municipality.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_municipality')
+                field: municipality_key
+      - name: demographic_key
+        description: Foreign key to dim_demographic (sex and completed-year age).
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_demographic')
+                field: demographic_key
+      - name: census_year
+        description: Census year (2022).
+        data_type: integer
+        data_tests:
+          - not_null
+      - name: population
+        description: Resident population of the cell.
+        data_type: integer
+        data_tests:
+          - not_null

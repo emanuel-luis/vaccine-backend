@@ -1,0 +1,50 @@
+name: vaccine_warehouse
+version: "0.1.0"
+config-version: 2
+profile: vaccine_warehouse
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # dim_date range and the date the first version of every CNES unit is back-dated to.
+  dim_date_start: "2015-01-01"
+  dim_date_end: "2030-12-31"
+
+models:
+  vaccine_warehouse:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+      +contract:
+        enforced: true
+
+# Static reference data lives in its own schema, apart from the views dbt rebuilds.
+seeds:
+  vaccine_warehouse:
+    +schema: reference
+    cnes_unit_types:
+      +column_types:
+        unit_type_code: smallint
+        unit_type_label: text
+        is_primary_care: boolean
+        label_source: text
+    pni_child_schedule:
+      +column_types:
+        vaccine_code: text
+        vaccine_name: text
+        dose_label: text
+        dose_number: integer
+        recommended_age_days: integer
+        min_age_days: integer
+        max_age_days: integer
+        min_interval_days: integer
+        is_coverage_indicator: boolean
+        coverage_target_age_years: integer
+        window_source: text

@@ -1,0 +1,47 @@
+version: 2
+
+seeds:
+  - name: cnes_unit_types
+    description: Labels for CNES unit type codes. Codes not listed here get "Other (CNES type N)".
+    columns:
+      - name: unit_type_code
+        description: CNES unit type code, primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: unit_type_label
+        description: Unit type label.
+      - name: is_primary_care
+        description: Whether the type is a primary-care unit.
+      - name: label_source
+        description: Where the label comes from.
+
+  - name: pni_child_schedule
+    description: Childhood vaccination schedule, one row per vaccine x dose.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [vaccine_code, dose_label]
+    columns:
+      - name: vaccine_code
+        description: Vaccine code.
+      - name: vaccine_name
+        description: Vaccine name.
+      - name: dose_label
+        description: Dose label within the vaccine.
+      - name: dose_number
+        description: Ordinal of the dose within the vaccine.
+      - name: recommended_age_days
+        description: Recommended age at the dose, in days.
+      - name: min_age_days
+        description: Minimum valid age at the dose, in days.
+      - name: max_age_days
+        description: Maximum age at the dose, in days.
+      - name: min_interval_days
+        description: Minimum interval since the previous dose, in days.
+      - name: is_coverage_indicator
+        description: Whether the dose counts toward the coverage indicator.
+      - name: coverage_target_age_years
+        description: Age cohort in completed years the indicator measures.
+      - name: window_source
+        description: Source or assumption behind the age window.
