@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import java.util.Date;
 import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Data
@@ -22,6 +24,7 @@ public class AplicacaoVacina {
     private Date dataNascimento;
 
     @Column(name = "sexo", nullable = false, length = 1)
+    @JdbcTypeCode(SqlTypes.CHAR) // CHAR(1) in V1
     private String sexo;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -2,6 +2,8 @@ package io.github.emanuelluis.vaccine.api.dimension;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Data
@@ -21,6 +23,7 @@ public class Estado {
     @Column
     private String nome;
 
-    @Column
+    @Column(length = 2)
+    @JdbcTypeCode(SqlTypes.CHAR) // CHAR(2) in V1
     private String sigla;
 }
