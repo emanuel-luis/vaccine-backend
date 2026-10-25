@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Writes of the speed layer: raw.live_dose, live.dose_daily, NOTIFY and ops.ingest_reject. */
 @Repository
-class DoseIngestRepository {
+public class DoseIngestRepository {
 
     private static final Logger log = LoggerFactory.getLogger(DoseIngestRepository.class);
 

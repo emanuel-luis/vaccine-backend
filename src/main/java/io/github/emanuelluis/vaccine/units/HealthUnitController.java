@@ -1,5 +1,6 @@
 package io.github.emanuelluis.vaccine.units;
 
+import io.github.emanuelluis.vaccine.security.ScopeGuard;
 import io.github.emanuelluis.vaccine.web.ApiResponse;
 import io.github.emanuelluis.vaccine.web.NotFoundException;
 import jakarta.validation.constraints.Pattern;
@@ -7,6 +8,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,7 +49,8 @@ public class HealthUnitController {
 
     @GetMapping("/{cnesCode}/history")
     @Transactional(readOnly = true)
-    public ApiResponse<HealthUnitVersion> history(@PathVariable @Pattern(regexp = "\\d{7}") String cnesCode) {
+    public ApiResponse<HealthUnitVersion> history(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable @Pattern(regexp = "\\d{7}") String cnesCode) {
         List<HealthUnitVersion> versions = jdbc.sql("""
                         select u.cnes_code, u.unit_name, u.neighborhood, u.street, u.unit_type_code,
                                u.unit_type_label, u.is_active, u.municipality_code,
@@ -63,6 +67,8 @@ public class HealthUnitController {
         if (versions.isEmpty()) {
             throw new NotFoundException("no health unit with CNES code " + cnesCode);
         }
+        // Every version must lie inside the caller's scope, or the history would leak another region's unit.
+        versions.forEach(v -> ScopeGuard.requireCovers(jwt, v.stateAbbr(), v.municipalityCode()));
         return ApiResponse.of(SOURCE, false, versions);
     }
 }

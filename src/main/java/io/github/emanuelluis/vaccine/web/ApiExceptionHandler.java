@@ -51,6 +51,13 @@ public class ApiExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ProblemDetail forbidden(ForbiddenException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setProperty("code", ex.code());
+        return problem;
+    }
+
     @ExceptionHandler(BadSqlGrammarException.class)
     public ResponseEntity<ProblemDetail> badSql(BadSqlGrammarException ex) {
         SQLException cause = ex.getSQLException();

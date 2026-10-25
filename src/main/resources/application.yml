@@ -20,11 +20,20 @@ spring:
   threads:
     virtual:
       enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # With both set, Spring does not call discovery at issuer-uri: keys come from jwk-set-uri
+          # (the compose network) and `iss` is still checked against issuer-uri (the browser URL).
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/vaccine}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/vaccine/protocol/openid-connect/certs}
+          audiences: vaccine-api
 
-vaccine:
-  ingest:
-    # No authentication before PR2: POST /api/v1/doses is 404 unless this is true (env VACCINE_INGEST_ENABLED).
-    enabled: ${VACCINE_INGEST_ENABLED:false}
+springdoc:
+  # Stable, diffable docs/api/openapi.json (checked by OpenApiSpecIT).
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
 
 management:
   endpoints:

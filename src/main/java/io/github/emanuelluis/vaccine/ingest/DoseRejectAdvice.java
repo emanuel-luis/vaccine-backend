@@ -5,12 +5,12 @@ import io.github.emanuelluis.vaccine.web.ConflictException;
 import io.github.emanuelluis.vaccine.web.InvalidRequestException;
 import io.github.emanuelluis.vaccine.web.UnprocessableException;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice(assignableTypes = DoseController.class)
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@ConditionalOnProperty(name = "vaccine.ingest.enabled", havingValue = "true")
 class DoseRejectAdvice {
 
     private final DoseIngestRepository repository;
@@ -76,6 +75,9 @@ class DoseRejectAdvice {
         if (key != null && !DoseController.KEY.matcher(key).matches()) {
             key = null;
         }
-        repository.reject(DoseController.CLIENT_ID, key, status, reason, detail);
+        String clientId = req.getUserPrincipal() instanceof JwtAuthenticationToken t
+                ? DoseController.clientId(t.getToken())
+                : "unknown";
+        repository.reject(clientId, key, status, reason, detail);
     }
 }

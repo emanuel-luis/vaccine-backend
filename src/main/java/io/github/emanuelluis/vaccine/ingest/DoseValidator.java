@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Transactional(readOnly = true)
-class DoseValidator {
+public class DoseValidator {
 
     /** Same rule as dbt's {@code administered_on}. */
     static final ZoneId LOCAL_ZONE = ZoneId.of("America/Sao_Paulo");
