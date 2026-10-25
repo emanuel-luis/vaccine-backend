@@ -1,0 +1,185 @@
+version: 2
+
+# Synthetic facts and their lot dimension. All rows come from the seeded generator.
+models:
+  - name: dim_vaccine_lot
+    description: >
+      One synthetic manufacturing lot (one per vaccine and calendar quarter). Grain: lot_number.
+      Includes the Unknown member.
+    columns:
+      - name: lot_key
+        description: Surrogate key (uuid from lot_number), primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: lot_number
+        description: Lot number, e.g. PENTA-2024Q3; UNKNOWN for the Unknown member.
+        data_type: text
+        data_tests:
+          - unique
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code, foreign key to dim_vaccine.
+        data_type: text
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_vaccine')
+                field: vaccine_code
+      - name: manufacturer_name
+        description: Synthetic manufacturer name.
+        data_type: text
+      - name: manufactured_on
+        description: Manufacturing date; null for Unknown.
+        data_type: date
+      - name: expires_on
+        description: Expiry date; null for Unknown.
+        data_type: date
+
+  - name: fact_vaccination
+    description: >
+      One dose given to one synthetic person at one unit on one date (synthetic data). Grain:
+      vaccination_id; each person gets each vaccine dose at most once. health_unit_key is the unit
+      version valid on the dose date. A failed lookup points to the Unknown member.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [person_id, vaccine_key]
+    columns:
+      - name: vaccination_id
+        description: Degenerate key, the event id of the raw row; primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: person_id
+        description: Degenerate key, synthetic person id.
+        data_type: uuid
+        data_tests:
+          - not_null
+      - name: date_key
+        description: Foreign key to dim_date, the local date of the dose.
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: vaccine_key
+        description: Foreign key to dim_vaccine (vaccine and dose).
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_vaccine')
+                field: vaccine_key
+      - name: lot_key
+        description: Foreign key to dim_vaccine_lot.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_vaccine_lot')
+                field: lot_key
+      - name: health_unit_key
+        description: Foreign key to dim_health_unit, the unit version valid on the dose date.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_health_unit')
+                field: health_unit_key
+      - name: municipality_key
+        description: Foreign key to dim_municipality, the municipality of that unit version.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_municipality')
+                field: municipality_key
+      - name: demographic_key
+        description: Foreign key to dim_demographic (sex and completed-year age at the dose).
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_demographic')
+                field: demographic_key
+      - name: age_days
+        description: Age in days at the dose.
+        data_type: integer
+        data_tests:
+          - not_null
+      - name: doses
+        description: Doses given; always 1.
+        data_type: integer
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1]
+
+  - name: fact_vaccine_receipt
+    description: >
+      One lot shipment received by one unit on one date (synthetic data). Grain: receipt_id; one
+      receipt per unit and lot. health_unit_key is the unit version valid on the receipt date.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [health_unit_key, lot_key]
+    columns:
+      - name: receipt_id
+        description: Degenerate key, the receipt id of the raw row; primary key.
+        data_type: uuid
+        data_tests:
+          - unique
+          - not_null
+      - name: date_key
+        description: Foreign key to dim_date, the date received.
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: lot_key
+        description: Foreign key to dim_vaccine_lot.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_vaccine_lot')
+                field: lot_key
+      - name: health_unit_key
+        description: Foreign key to dim_health_unit, the unit version valid on the receipt date.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_health_unit')
+                field: health_unit_key
+      - name: municipality_key
+        description: Foreign key to dim_municipality, the municipality of that unit version.
+        data_type: uuid
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_municipality')
+                field: municipality_key
+      - name: doses_received
+        description: Doses in the shipment, whole packs of ten.
+        data_type: integer
+        data_tests:
+          - not_null

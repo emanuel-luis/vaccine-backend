@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: int_vaccinations_enriched
+    description: >
+      Synthetic doses with the CNES unit version valid on the dose date (valid_from <=
+      administered_on < valid_to) and the age at the dose. Grain, one row per event_id.
+      unit_valid_from and municipality_code are null when the unit has no version on that date.
+    columns:
+      - name: event_id
+        description: Event id, primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: person_id
+        description: Synthetic person id.
+      - name: birth_date
+        description: Birth date of the person.
+      - name: sex
+        description: F or M.
+      - name: cnes_code
+        description: CNES code of the unit that gave the dose.
+      - name: vaccine_code
+        description: Vaccine code.
+      - name: dose_label
+        description: Dose label within the vaccine.
+      - name: lot_number
+        description: Lot the dose came from.
+      - name: administered_at
+        description: Timestamp the dose was given, timestamptz (UTC).
+      - name: administered_on
+        description: Local calendar date of the dose.
+      - name: unit_valid_from
+        description: valid_from of the unit version valid on the dose date; null when none.
+      - name: municipality_code
+        description: 7-digit IBGE municipality code of that unit version; null when none.
+      - name: age_days
+        description: Age in days at the dose (administered_on minus birth_date).
+      - name: age_years
+        description: Completed years of age at the dose.
