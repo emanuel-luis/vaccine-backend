@@ -12,7 +12,7 @@
 | 8 | 2026-10-25 | When CI arrives | From PR1 (lint, `mvn verify`, compose smoke), extended in PR4 | Every phase PR needs a green gate before merge |
 | 9 | 2026-10-25 | Warehouse design | Blueprint in [REFACTOR_PLAN.md](REFACTOR_PLAN.md): flattened geography, junk demographic dimension, lot dimension, SCD2 health units from dated extracts, API over marts with `JdbcClient` | Architect review; deterministic and testable |
 | 10 | 2026-10-25 | Public source data | Vendor small normalized snapshots (about 3 MB gzipped) with a sha256 manifest; a `fetch` command refreshes them, CI never downloads | Reproducible offline builds; government endpoints are slow and capped |
-| 11 | 2026-10-25 | Repo rename (`vaccine-warehouse`) | Pending: asked the owner | High impact (outward-facing) |
+| 11 | 2026-10-25 | Repo rename (`vaccine-warehouse`) | Approved by the owner: renamed on GitHub (see 24) | High impact (outward-facing), so asked first |
 | 12 | 2026-10-25 | Where the ELT runs | On the host via `uv run --project elt` (Python project in `elt/`, dbt in a `dbt` dependency group), driven by `make demo` | Simpler than an ELT container: one Dockerfile, no compose profile; CI already has uv |
 | 13 | 2026-10-25 | Legacy API during the refactor | Keep `/api/dimension*`, `/api/fact` and the `src/python` loaders until PR4 swaps the API | `main` keeps a working demo after every phase |
 | 14 | 2026-10-25 | SCD2 tracked attributes for health units | Track name, neighborhood, municipality, active flag; street, unit type and coordinates are type 1 | The 2023 extract has no type or coordinates, and street formats differ between extracts; tracking them would version every unit |
@@ -25,3 +25,4 @@
 | 21 | 2026-10-25 | API shape | `/api/v1`, `{data, meta}` envelope with source and synthetic flag, required month range of at most 36 months for dose endpoints, problem details for errors, 503 while marts are missing | Bounded responses; consumers always see that the measures are synthetic |
 | 22 | 2026-10-25 | Legacy API | Removed with its loaders and CSVs; Flyway `V5` drops the legacy tables | Replaced by the warehouse; the 2023 unit list is preserved as the vendored CNES snapshot |
 | 23 | 2026-10-25 | Dependency scanning | OSV-Scanner on `pom.xml` and `elt/uv.lock` (weekly and on PRs) plus grouped weekly Dependabot | One scanner for both ecosystems, no API key needed |
+| 24 | 2026-10-25 | Repository name | `emanuel-luis/vaccine-warehouse` (was `vaccine-backend`); Maven artifact, compose project and application name follow; GitHub redirects the old URL | The repo is now a dimensional warehouse, not a CRUD backend; owner's choice (program decision 21) |
