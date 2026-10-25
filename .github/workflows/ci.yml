@@ -86,8 +86,21 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: elt/uv.lock
-      - name: Stack up, load reference data, generate 20k events, dbt build, call the API
+      - name: Stack up, load reference data, generate 20k events, dbt build, call every endpoint
         run: make demo ROWS=20000 SEED=42
+      - name: dbt docs
+        if: success()
+        run: set -a && . ./.env && set +a && PGHOST=localhost PGPORT=5432 PGDATABASE=vaccine PGUSER=vaccine PGPASSWORD="$POSTGRES_PASSWORD" uv run --project elt dbt docs generate --project-dir dbt --profiles-dir dbt
+      - name: Upload dbt docs
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dbt-docs
+          path: |
+            dbt/target/index.html
+            dbt/target/manifest.json
+            dbt/target/catalog.json
+          retention-days: 14
       - name: Load metadata
         if: always()
         run: >

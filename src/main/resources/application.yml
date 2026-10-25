@@ -8,16 +8,14 @@ spring:
     username: vaccine
   flyway:
     enabled: true
-    # History lives in `ops`; later migrations add the `raw` landing schema.
+    # History lives in `ops`; migrations also own `raw`. dbt owns `staging`, `intermediate`,
+    # `marts` and `reference`; the API only reads `marts` and `ops`.
     default-schema: ops
     schemas: ops
     create-schemas: true
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-  mustache:
-    suffix: .html
+  mvc:
+    problemdetails:
+      enabled: true
 
 management:
   endpoints:
