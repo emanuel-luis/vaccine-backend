@@ -11,6 +11,13 @@ vars:
   dim_date_start: "2015-01-01"
   dim_date_end: "2030-12-31"
 
+# Live generation protocol: close the open generation before the models read raw.live_dose, tell
+# the API which one was absorbed afterwards. Both macros are no-ops outside run and build.
+on-run-start:
+  - "{{ close_live_generation() }}"
+on-run-end:
+  - "{{ notify_batch_event(results) }}"
+
 models:
   vaccine_warehouse:
     staging:

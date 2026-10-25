@@ -8,8 +8,9 @@ column contract is `docs/data-model.md`.
   `int_vaccinations_enriched`, each dose joined to the unit version valid on its date.
 - `marts` (tables, enforced contracts): `dim_*`, `fact_population` (Censo 2022), the synthetic facts
   `fact_vaccination` and `fact_vaccine_receipt`, and the API marts `mart_doses_by_state_month`,
-  `mart_doses_by_age_band` and `mart_coverage_by_state`. Every dimension except `dim_date` has an
+  `mart_doses_by_age_band`, `mart_doses_daily` and `mart_coverage_by_state`. Every dimension except `dim_date` has an
   Unknown member with key `00000000-0000-0000-0000-000000000000`; facts fall back to it.
+- Live doses: `raw.live_dose` rows with `generation <= W` join the generator events in `int_vaccinations_enriched`. The `on-run-start` hook (`macros/live_generation.sql`, run and build only) closes the open generation and W is stamped on every row as `batch_generation` (also in `fact_vaccination` and `mart_doses_daily`); `on-run-end` sends `pg_notify('batch_event')`. See `docs/data-model.md`.
 - `seeds` (schema `reference`): `pni_child_schedule`, `cnes_unit_types`.
 
 Run it against a Postgres whose `raw` schema is loaded (libpq variables, no defaults for the

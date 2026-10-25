@@ -9,7 +9,8 @@
     {'columns': ['demographic_key']}
 ]) }}
 
--- Grain: one dose given to one synthetic person. Synthetic data from the seeded generator.
+-- Grain: one dose given to one synthetic person. Synthetic data from the seeded generator and the
+-- live doses of the closed generations; every row carries the same batch_generation (W).
 with doses as (
 
     select
@@ -24,7 +25,9 @@ with doses as (
         unit_valid_from,
         municipality_code,
         age_days,
-        age_years
+        age_years,
+        record_source,
+        batch_generation
 
     from {{ ref('int_vaccinations_enriched') }}
 
@@ -73,7 +76,9 @@ final as (
         coalesce(m.municipality_key, {{ unknown_key() }}) as municipality_key,
         coalesce(g.demographic_key, {{ unknown_key() }}) as demographic_key,
         d.age_days,
-        1 as doses
+        1 as doses,
+        d.record_source,
+        d.batch_generation
 
     from doses as d
     left join vaccines as v on v.vaccine_code = d.vaccine_code and v.dose_label = d.dose_label
@@ -94,6 +99,8 @@ select
     municipality_key,
     demographic_key,
     cast(age_days as integer) as age_days,
-    cast(doses as integer) as doses
+    cast(doses as integer) as doses,
+    record_source,
+    cast(batch_generation as bigint) as batch_generation
 
 from final
