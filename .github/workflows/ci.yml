@@ -19,7 +19,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,7 +29,13 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Spotless check
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: elt/uv.lock
+      - name: Sync the ELT environment
+        run: uv sync --locked --project elt
+      - name: Spotless, ruff, mypy, dbt parse
         run: make lint
 
   java:
@@ -47,10 +53,10 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Verify
-        run: make test
+        run: make test-java
 
-  compose-smoke:
-    name: compose smoke (make demo)
+  python:
+    name: python (ELT unit + Testcontainers)
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -59,8 +65,35 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
-      - name: Stack up, load dimensions, call the API
+        with:
+          enable-cache: true
+          cache-dependency-glob: elt/uv.lock
+      - name: Sync the ELT environment
+        run: uv sync --locked --project elt
+      - name: Pytest
+        run: make test-python
+
+  compose-smoke:
+    name: end to end (make demo)
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: elt/uv.lock
+      - name: Stack up, load reference data, dbt build, call the API
         run: make demo
+      - name: Load metadata
+        if: always()
+        run: >
+          docker compose exec -T postgres psql -U vaccine -d vaccine -c
+          "select table_name, source, rows_read, rows_loaded, rows_rejected
+          from ops.load_run_table order by loaded_at desc limit 10"
       - name: Stack logs on failure
         if: failure()
         run: docker compose logs --no-color
