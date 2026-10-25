@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Repository renamed to `vaccine-warehouse` (GitHub redirects `vaccine-backend`). The Maven
+  artifact (`io.github.emanuel-luis:vaccine-warehouse`), the compose project and the Spring
+  application name follow.
+
 ### Added (phase 4: analytical API)
 - Read-only endpoints over the marts with `JdbcClient` and Java records:
   `/api/v1/doses/by-state-month`, `/api/v1/doses/by-age-band`, `/api/v1/coverage`,

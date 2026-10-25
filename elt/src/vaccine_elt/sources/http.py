@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-USER_AGENT = "vaccine-elt/0.2 (+https://github.com/emanuel-luis/vaccine-backend)"
+USER_AGENT = "vaccine-elt/0.2 (+https://github.com/emanuel-luis/vaccine-warehouse)"
 TIMEOUT_SECONDS = 600
 
 

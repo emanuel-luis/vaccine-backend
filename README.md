@@ -1,11 +1,11 @@
-# Vaccine Backend: dimensional vaccination warehouse
+# Vaccine Warehouse: dimensional vaccination warehouse
 
 > A Kimball-style warehouse of Brazilian childhood vaccination on Postgres: public IBGE and CNES
 > reference data, a reproducible Python ELT, Flyway migrations, dbt marts with data tests, and a
 > read-only Spring Boot API over the marts.
 
-[![ci](https://github.com/emanuel-luis/vaccine-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/emanuel-luis/vaccine-backend/actions/workflows/ci.yml)
-[![security](https://github.com/emanuel-luis/vaccine-backend/actions/workflows/security.yml/badge.svg)](https://github.com/emanuel-luis/vaccine-backend/actions/workflows/security.yml)
+[![ci](https://github.com/emanuel-luis/vaccine-warehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/emanuel-luis/vaccine-warehouse/actions/workflows/ci.yml)
+[![security](https://github.com/emanuel-luis/vaccine-warehouse/actions/workflows/security.yml/badge.svg)](https://github.com/emanuel-luis/vaccine-warehouse/actions/workflows/security.yml)
 ![Java 21](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
@@ -71,7 +71,7 @@ Needs Docker, GNU Make (Linux, macOS or WSL) and [uv](https://docs.astral.sh/uv/
 needed to run the Java tests.
 
 ```bash
-git clone https://github.com/emanuel-luis/vaccine-backend && cd vaccine-backend
+git clone https://github.com/emanuel-luis/vaccine-warehouse && cd vaccine-warehouse
 make demo   # .env, Postgres + API, reference data, 200k synthetic doses, dbt build, endpoint smoke
 make down   # stop and remove the stack
 ```
