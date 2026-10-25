@@ -151,3 +151,16 @@ snapshots give identical rows. Rules (constants in `elt/src/vaccine_elt/generato
 With 200,000 events the sample is about 0.2% of a birth cohort. Each person stays at one home unit,
 so doses reach about 17,000 of the 54,000 eligible units, each with a handful of doses, and
 receipts are almost as many as doses.
+
+## API mapping
+
+| Endpoint | Reads |
+| --- | --- |
+| `GET /api/v1/doses/by-state-month` | `marts.mart_doses_by_state_month` |
+| `GET /api/v1/doses/by-age-band` | `marts.mart_doses_by_age_band` |
+| `GET /api/v1/coverage` | `marts.mart_coverage_by_state` |
+| `GET /api/v1/health-units/{cnesCode}/history` | `marts.dim_health_unit` joined to `marts.dim_municipality` |
+| `GET /api/v1/runs/latest` | `ops.load_run`, `ops.load_run_table` |
+
+The Java records in `src/main/java/.../analytics/AnalyticsRows.java` and the test fixtures in
+`src/test/resources/fixtures/marts.sql` mirror these columns.
