@@ -21,7 +21,12 @@ def write_snapshot(path: Path, columns: Sequence[str], rows: Iterable[Row]) -> i
     for row in rows:
         writer.writerow(row)
         count += 1
-    data = buffer.getvalue().encode("utf-8")
+    write_deterministic(path, buffer.getvalue().encode("utf-8"))
+    return count
+
+
+def write_deterministic(path: Path, data: bytes) -> None:
+    """Atomically write `data`; a `.gz` path is gzipped with a zero mtime and no embedded name."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     if path.suffix == ".gz":
@@ -33,7 +38,6 @@ def write_snapshot(path: Path, columns: Sequence[str], rows: Iterable[Row]) -> i
     else:
         tmp.write_bytes(data)
     tmp.replace(path)
-    return count
 
 
 def read_snapshot(path: Path) -> tuple[list[str], Iterator[tuple[int, Row]]]:
