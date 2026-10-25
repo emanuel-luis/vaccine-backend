@@ -86,8 +86,15 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: elt/uv.lock
-      - name: Stack up, load reference data, generate 20k events, dbt build, call every endpoint
+      - name: Enable dose ingest (no authentication yet, so it is off by default)
+        run: |
+          make env
+          echo >> .env
+          echo "VACCINE_INGEST_ENABLED=true" >> .env
+      - name: Stack up, load reference data, generate 20k events, dbt build, reconcile, call every endpoint
         run: make demo ROWS=20000 SEED=42
+      - name: Speed layer (post doses, dbt build, reconcile)
+        run: make speed-check
       - name: dbt docs
         if: success()
         run: set -a && . ./.env && set +a && PGHOST=localhost PGPORT=5432 PGDATABASE=vaccine PGUSER=vaccine PGPASSWORD="$POSTGRES_PASSWORD" uv run --project elt dbt docs generate --project-dir dbt --profiles-dir dbt

@@ -26,3 +26,25 @@
 | 22 | 2026-10-25 | Legacy API | Removed with its loaders and CSVs; Flyway `V5` drops the legacy tables | Replaced by the warehouse; the 2023 unit list is preserved as the vendored CNES snapshot |
 | 23 | 2026-10-25 | Dependency scanning | OSV-Scanner on `pom.xml` and `elt/uv.lock` (weekly and on PRs) plus grouped weekly Dependabot | One scanner for both ecosystems, no API key needed |
 | 24 | 2026-10-25 | Repository name | `emanuel-luis/vaccine-warehouse` (was `vaccine-backend`); Maven artifact, compose project and application name follow; GitHub redirects the old URL | The repo is now a dimensional warehouse, not a CRUD backend; owner's choice (program decision 21) |
+| 25 | 2026-10-25 | Real-time design | Postgres speed layer (live landing + one incremental aggregate + NOTIFY); dbt stays the history | No broker for a single developer; transactional |
+| 26 | 2026-10-25 | Live schemas | `raw.live_dose` landing, `live` aggregates, `app` campaigns; all Flyway | Keeps the layer split visible |
+| 27 | 2026-10-25 | Batch watermark | Generation protocol (SHARE vs ROW EXCLUSIVE), closed by a dbt `on-run-start` hook on run/build, W carried by the fact | Exact with in-flight transactions |
+| 28 | 2026-10-25 | Serving merge | `mart_doses_daily` + `live.dose_daily` above W, one statement | One grain, no double count during swaps |
+| 29 | 2026-10-25 | Reconciliation | dbt test for absorption + `vaccine-elt reconcile` in REPEATABLE READ, results in ops | Build gate plus continuous evidence |
+| 30 | 2026-10-25 | Ingest idempotency | `Idempotency-Key` per client; replay 200, mismatch 422, duplicate dose 409, 503 without marts | Follows the IETF draft; safe retries |
+| 31 | 2026-10-25 | Clock in the live path | `administeredAt` from the client, a [-30 days, +5 min] window, `received_at` as metadata | Live data is inherently time-bound; checked only at validation |
+| 32 | 2026-10-25 | SSE | fetch + bearer, LISTEN/NOTIFY per instance, 2 s ticks, resync instead of replay, closes at token expiry | No ticket store; correct by refetch |
+| 33 | 2026-10-25 | Identity | Keycloak 26.8.1 dev mode, committed realm with env placeholders, browser-URL issuer, JWKS on the compose network | Reproducible, no secrets in git |
+| 34 | 2026-10-25 | Roles and scope | 3 user roles + `dose-ingest`; `region_scope` claim; URL rules in one place; deny without scope | Small and auditable |
+| 35 | 2026-10-25 | Small cells | k = 5 primary suppression in the API and exports, never in marts; secondary (complementary) suppression out of scope and documented | Marts stay reconcilable; data is synthetic |
+| 36 | 2026-10-25 | Geometries | IBGE malhas v3 `minima` vendored through `fetch` with sha256; attribution recorded, license "to be confirmed" as in decision 15; no basemap tiles | Offline, no paid tile service |
+| 37 | 2026-10-25 | Jobs | `ops.job` queue + single-active index + SKIP LOCKED Python worker; host targets kept (amends 12) | Reuses ELT code; CI unchanged |
+| 38 | 2026-10-25 | dbt results | `run_results.json` -> `ops.dbt_invocation` / `ops.dbt_node_result` | The API reads ops only |
+| 39 | 2026-10-25 | Manifest to UI | `load-reference` records entries in `ops.load_run_source`; optional `license_status` | No file access from the API |
+| 40 | 2026-10-25 | OpenAPI | springdoc 3.1.1, committed spec, drift IT, openapi-typescript + openapi-fetch | Typed client, CI-checked |
+| 41 | 2026-10-25 | Web pins | TypeScript 5.9.x, react-router library mode, own ECharts wrapper | Peer constraints; fewer dependencies |
+| 42 | 2026-10-25 | Web serving | nginx-unprivileged, same-origin `/api`, runtime `/config.json` | No CORS; one image for every environment |
+| 43 | 2026-10-25 | Simulator | Python, generator inputs, one person per dose, stdlib HTTP | Valid by construction |
+| 44 | 2026-10-25 | Campaigns and exports | `app.campaign` with optimistic locking; CSV `;`, UTF-8 BOM, decimal comma | Excel pt-BR users |
+| 45 | 2026-10-25 | PR1 window | Ingest disabled unless `VACCINE_INGEST_ENABLED`; removed in PR2 | No open write endpoint on main |
+| 46 | 2026-10-25 | UI language | pt-BR UI text; code and docs stay English | Audience is SUS staff |

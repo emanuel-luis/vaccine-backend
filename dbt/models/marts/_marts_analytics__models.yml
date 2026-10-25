@@ -173,3 +173,60 @@ models:
           - accepted_values:
               arguments:
                 values: ['IBGE Censo 2022, SIDRA 9514']
+
+  - name: mart_doses_daily
+    description: >
+      Doses per local day, CNES unit, vaccine, dose and completed-year age band (synthetic). The
+      API merges it with live.dose_daily rows above batch_generation. Unknown members: state NA,
+      municipality 0, CNES 0000000. Grain: date_day x cnes_code x vaccine_code x dose_label x
+      age_band_years.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [date_day, cnes_code, vaccine_code, dose_label, age_band_years]
+    columns:
+      - name: date_day
+        description: Local calendar date of the dose.
+        data_type: date
+        data_tests:
+          - not_null
+      - name: state_abbr
+        description: Two-letter state abbreviation of the unit version valid on the date; NA for Unknown.
+        data_type: char(2)
+        data_tests:
+          - not_null
+      - name: municipality_code
+        description: 7-digit IBGE municipality code of that unit version; 0 for Unknown.
+        data_type: integer
+        data_tests:
+          - not_null
+      - name: cnes_code
+        description: 7-digit CNES establishment code; 0000000 for Unknown.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code; UNKNOWN for a code outside the schedule.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: dose_label
+        description: Dose label within the vaccine; UNKNOWN for a code outside the schedule.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: age_band_years
+        description: Completed years of age at the dose, 0 to 6; null for the Unknown demographic.
+        data_type: integer
+      - name: doses
+        description: Doses given in the cell (synthetic).
+        data_type: bigint
+        data_tests:
+          - not_null
+      - name: batch_generation
+        description: >
+          W, the live generation watermark absorbed by the build; the same on every row. Serving
+          adds live.dose_daily rows with generation greater than this value.
+        data_type: bigint
+        data_tests:
+          - not_null

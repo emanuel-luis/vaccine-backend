@@ -1,4 +1,4 @@
-"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate`.
+"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate | reconcile`.
 
 Database connection: libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD)."""
 
@@ -19,6 +19,7 @@ from vaccine_elt.generator.inputs import schedule_path
 from vaccine_elt.generator.writer import run_generate
 from vaccine_elt.load import load_reference
 from vaccine_elt.manifest import Manifest, ManifestError, read_manifest, write_manifest
+from vaccine_elt.reconcile import run_reconcile
 
 FETCHERS = {
     "municipalities": fetch.fetch_municipalities,
@@ -57,6 +58,11 @@ def _parser() -> argparse.ArgumentParser:
     gen.add_argument("--end", type=date.fromisoformat, default=date(2025, 12, 31))
     gen.add_argument(
         "--schedule", type=Path, default=None, help="default: dbt/seeds/pni_child_schedule.csv"
+    )
+    commands.add_parser(
+        "reconcile",
+        help="check live.dose_daily and the serving merge against the landing tables"
+        " (exit 1 when a check fails)",
     )
     return parser
 
@@ -108,6 +114,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             for result in results:
                 print(f"{result.table}: {result.rows_loaded} rows")
             print(f"persons: {data.persons}, sample_fraction: {data.sample_fraction}")
+        elif args.command == "reconcile":
+            with psycopg.connect(autocommit=True) as conn:
+                checks = run_reconcile(conn)
+            for check in checks:
+                print(
+                    f"{check.name}: {'passed' if check.passed else 'FAILED'},"
+                    f" {check.keys_mismatched}/{check.keys_compared} keys differ,"
+                    f" expected {check.expected_total}, actual {check.actual_total}"
+                )
+            return 0 if all(check.passed for check in checks) else 1
         else:
             with psycopg.connect(autocommit=True) as conn:
                 for result in load_reference(conn, directory):

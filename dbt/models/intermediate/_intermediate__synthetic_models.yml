@@ -3,8 +3,9 @@ version: 2
 models:
   - name: int_vaccinations_enriched
     description: >
-      Synthetic doses with the CNES unit version valid on the dose date (valid_from <=
-      administered_on < valid_to) and the age at the dose. Grain, one row per event_id.
+      Synthetic doses (generator events plus the live doses of the closed generations) with the
+      CNES unit version valid on the dose date (valid_from <= administered_on < valid_to) and the
+      age at the dose. Grain, one row per event_id.
       unit_valid_from and municipality_code are null when the unit has no version on that date.
     columns:
       - name: event_id
@@ -30,6 +31,17 @@ models:
         description: Timestamp the dose was given, timestamptz (UTC).
       - name: administered_on
         description: Local calendar date of the dose.
+      - name: record_source
+        description: generator for batch events, live for doses posted to the API.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['generator', 'live']
+      - name: batch_generation
+        description: W, the live generation watermark read by this query; the same on every row.
+        data_tests:
+          - not_null
       - name: unit_valid_from
         description: valid_from of the unit version valid on the dose date; null when none.
       - name: municipality_code
