@@ -19,14 +19,17 @@ public final class AnalyticsRows {
             String doseLabel,
             long doses) {}
 
-    /** One row of {@code marts.mart_doses_by_age_band}. */
+    /**
+     * One row of {@code marts.mart_doses_by_age_band}. {@code ageBandYears} is null for doses whose
+     * demographic fell back to the Unknown member (sex {@code U}).
+     */
     public record DosesByAgeBand(
             String stateAbbr,
             String yearMonth,
             LocalDate monthStart,
             String vaccineCode,
             String sex,
-            int ageBandYears,
+            Integer ageBandYears,
             long doses) {}
 
     /** One row of {@code marts.mart_coverage_by_state}. */
