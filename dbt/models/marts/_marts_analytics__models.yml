@@ -1,0 +1,175 @@
+version: 2
+
+# Analytics marts read by the API. Column contract: docs/data-model.md. Doses are synthetic.
+models:
+  - name: mart_doses_by_state_month
+    description: >
+      Synthetic doses per state, month, vaccine and dose. Doses at an Unknown municipality are in
+      state NA. Grain: state_abbr x year_month x vaccine_code x dose_label.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [state_abbr, year_month, vaccine_code, dose_label]
+    columns:
+      - name: state_abbr
+        description: Two-letter state abbreviation; NA for Unknown.
+        data_type: char(2)
+        data_tests:
+          - not_null
+      - name: state_name
+        description: State name.
+        data_type: text
+      - name: region_name
+        description: Region name.
+        data_type: text
+      - name: year_month
+        description: Year and month as YYYY-MM.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: month_start
+        description: First day of the month.
+        data_type: date
+        data_tests:
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: dose_label
+        description: Dose label within the vaccine.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: doses
+        description: Doses given in the cell (synthetic).
+        data_type: bigint
+        data_tests:
+          - not_null
+
+  - name: mart_doses_by_age_band
+    description: >
+      Synthetic doses per state, month, vaccine, sex and completed-year age band at the dose.
+      Grain: state_abbr x year_month x vaccine_code x sex x age_band_years.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [state_abbr, year_month, vaccine_code, sex, age_band_years]
+    columns:
+      - name: state_abbr
+        description: Two-letter state abbreviation; NA for Unknown.
+        data_type: char(2)
+        data_tests:
+          - not_null
+      - name: year_month
+        description: Year and month as YYYY-MM.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: month_start
+        description: First day of the month.
+        data_type: date
+        data_tests:
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: sex
+        description: F or M; U only for doses that matched no demographic member.
+        data_type: char(1)
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['F', 'M', 'U']
+      - name: age_band_years
+        description: Completed years of age at the dose, 0 to 6; null with sex U.
+        data_type: integer
+      - name: doses
+        description: Doses given in the cell (synthetic).
+        data_type: bigint
+        data_tests:
+          - not_null
+
+  - name: mart_coverage_by_state
+    description: >
+      Coverage of the childhood indicator doses per state and year, as a method demonstration. The
+      numerator is synthetic; the denominator is the Censo 2022 population of the target age scaled
+      by the generator's sample_fraction. Full grid: state x year x indicator dose, zeros included.
+      Grain: state_abbr x year x vaccine_code x dose_label.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [state_abbr, year, vaccine_code, dose_label]
+    columns:
+      - name: state_abbr
+        description: Two-letter state abbreviation.
+        data_type: char(2)
+        data_tests:
+          - not_null
+      - name: state_name
+        description: State name.
+        data_type: text
+      - name: year
+        description: Year the doses were given.
+        data_type: integer
+        data_tests:
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: dose_label
+        description: Dose label within the vaccine.
+        data_type: text
+        data_tests:
+          - not_null
+      - name: target_age_years
+        description: Age cohort in completed years the indicator measures.
+        data_type: integer
+        data_tests:
+          - not_null
+      - name: doses
+        description: >
+          Indicator doses given in the year to children whose completed age at the dose equals
+          target_age_years (synthetic).
+        data_type: bigint
+        data_tests:
+          - not_null
+      - name: target_population
+        description: Censo 2022 population of the target age in the state, both sexes.
+        data_type: bigint
+        data_tests:
+          - not_null
+      - name: sample_fraction
+        description: >
+          Synthetic persons per birth year divided by the national age-0 population, from the
+          latest succeeded generate run in ops.load_run.
+        data_type: numeric
+      - name: expected_population
+        description: target_population times sample_fraction.
+        data_type: numeric
+      - name: coverage_pct
+        description: 100 times doses divided by expected_population, rounded to 2 decimals.
+        data_type: numeric(7,2)
+      - name: numerator_is_synthetic
+        description: Always true; the numerator comes from the synthetic generator.
+        data_type: boolean
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true]
+                quote: false
+      - name: denominator_source
+        description: Source of the denominator, IBGE Censo 2022, SIDRA 9514.
+        data_type: text
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['IBGE Censo 2022, SIDRA 9514']
