@@ -175,7 +175,7 @@ def test_load_is_idempotent_and_records_rejects(
         ("municipalities", 1, 0),
         ("census", 1, 1),
         ("cnes_2023", 1, 0),
-        ("cnes_2026", 1, 2),
+        ("cnes_2026", 2, 1),
     ]
     assert second == first
     assert {t: table_dump(conn, t) for t in snapshot} == snapshot
@@ -189,7 +189,11 @@ def test_load_is_idempotent_and_records_rejects(
     ]
     assert any("unknown IBGE municipality 9999999" in r for r in reasons)
     assert any("duplicate key" in r for r in reasons)
-    assert any("unknown 6-digit municipality 999999" in r for r in reasons)
+    assert len(reasons) == 2
+    unmapped = conn.execute(
+        "SELECT count(*) FROM raw.cnes_unit_snapshot WHERE municipality_code6 = 999999"
+    ).fetchone()
+    assert unmapped == (1,)  # landed; dbt maps it to the Unknown municipality
 
 
 def test_tampered_snapshot_fails_the_run_and_keeps_the_tables(
