@@ -1,7 +1,9 @@
 package io.github.emanuelluis.vaccine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,6 +61,16 @@ class ApplicationIT {
                 .andExpect(jsonPath("$[0].id").value(2453045))
                 .andExpect(jsonPath("$[0].siglaEstado").value("MA"))
                 .andExpect(jsonPath("$[0].regiao").value("Nordeste"));
+    }
+
+    @Test
+    void renderedPageShowsTheUnitWithItsStateAndCity() throws Exception {
+        for (String query : new String[] {"", "?estado=Maranh", "?cidade=Lu", "?estado=Maranh&cidade=Lu"}) {
+            mvc.perform(get("/api/dimension/render" + query))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("UBS CENTRO")))
+                    .andExpect(content().string(containsString("São Luís")));
+        }
     }
 
     @Test

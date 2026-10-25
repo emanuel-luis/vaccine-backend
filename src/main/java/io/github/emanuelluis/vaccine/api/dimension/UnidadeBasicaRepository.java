@@ -2,6 +2,7 @@ package io.github.emanuelluis.vaccine.api.dimension;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.*;
@@ -28,12 +29,20 @@ public interface UnidadeBasicaRepository extends JpaRepository<UnidadeBasica, Lo
             nativeQuery = true)
     public Page<IDimensionFilial> getDimensionFilial(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"municipio", "municipio.estado"})
     public Page<UnidadeBasica> findByMunicipioNomeLike(String nomeMunicipio, Pageable pageable);
 
     public UnidadeBasica findByNomeFantasiaLike(String nomeFantasia);
 
+    /** The Mustache page reads municipio.estado after the transaction ends (open-in-view is off). */
+    @Override
+    @EntityGraph(attributePaths = {"municipio", "municipio.estado"})
+    Page<UnidadeBasica> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"municipio", "municipio.estado"})
     public Page<UnidadeBasica> findByMunicipioEstadoNomeLike(String nomeEstado, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"municipio", "municipio.estado"})
     public Page<UnidadeBasica> findByMunicipioNomeLikeAndMunicipioEstadoNomeLike(
             String nomeMunicipio, String nomeEstado, Pageable pageable);
 }
