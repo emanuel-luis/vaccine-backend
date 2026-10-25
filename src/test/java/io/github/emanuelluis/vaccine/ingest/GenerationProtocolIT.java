@@ -3,6 +3,7 @@ package io.github.emanuelluis.vaccine.ingest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.DoseJson;
 import io.github.emanuelluis.vaccine.SpeedLayerSetup;
 import java.util.ArrayList;
@@ -62,6 +63,7 @@ class GenerationProtocolIT {
                 for (int i = 0; i < DOSES_PER_WRITER; i++) {
                     Map<String, Object> body = DoseJson.valid(UUID.randomUUID());
                     int status = mvc.perform(post("/api/v1/doses")
+                                    .with(Auth.ingest())
                                     .header("Idempotency-Key", UUID.randomUUID().toString())
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(DoseJson.json(body)))
