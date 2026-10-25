@@ -1,4 +1,4 @@
-"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference`.
+"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate`.
 
 Database connection: libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD)."""
 
@@ -9,11 +9,14 @@ import logging
 import sys
 import time
 from collections.abc import Sequence
+from datetime import date
 from pathlib import Path
 
 import psycopg
 
 from vaccine_elt import config, fetch
+from vaccine_elt.generator.inputs import schedule_path
+from vaccine_elt.generator.writer import run_generate
 from vaccine_elt.load import load_reference
 from vaccine_elt.manifest import Manifest, ManifestError, read_manifest, write_manifest
 
@@ -44,6 +47,17 @@ def _parser() -> argparse.ArgumentParser:
     legacy.add_argument("--snapshot-date", default="2023-06-02")
 
     commands.add_parser("load-reference", help="verify snapshots and load them into raw")
+
+    gen = commands.add_parser(
+        "generate", help="replace the synthetic events, lots and receipts (seeded, deterministic)"
+    )
+    gen.add_argument("--rows", type=int, default=200_000, help="vaccination events to generate")
+    gen.add_argument("--seed", type=int, default=42)
+    gen.add_argument("--start", type=date.fromisoformat, default=date(2024, 1, 1))
+    gen.add_argument("--end", type=date.fromisoformat, default=date(2025, 12, 31))
+    gen.add_argument(
+        "--schedule", type=Path, default=None, help="default: dbt/seeds/pni_child_schedule.csv"
+    )
     return parser
 
 
@@ -80,6 +94,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             entry = fetch.convert_legacy_cnes(directory, manifest, args.csv, args.snapshot_date)
             write_manifest(directory, manifest)
             print(f"{entry.id}: {entry.rows} rows -> {entry.path}")
+        elif args.command == "generate":
+            with psycopg.connect(autocommit=True) as conn:
+                data, results = run_generate(
+                    conn,
+                    directory,
+                    args.schedule or schedule_path(),
+                    rows=args.rows,
+                    seed=args.seed,
+                    start=args.start,
+                    end=args.end,
+                )
+            for result in results:
+                print(f"{result.table}: {result.rows_loaded} rows")
+            print(f"persons: {data.persons}, sample_fraction: {data.sample_fraction}")
         else:
             with psycopg.connect(autocommit=True) as conn:
                 for result in load_reference(conn, directory):
@@ -87,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"{result.table} <- {result.source}: read {result.rows_read},"
                         f" loaded {result.rows_loaded}, rejected {result.rows_rejected}"
                     )
-    except (ManifestError, psycopg.Error, OSError) as exc:
+    except (ManifestError, psycopg.Error, OSError, ValueError) as exc:
         logging.getLogger("vaccine_elt").error("%s failed: %s", args.command, exc)
         return 1
     return 0
