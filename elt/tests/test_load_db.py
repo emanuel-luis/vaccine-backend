@@ -212,3 +212,31 @@ def test_tampered_snapshot_fails_the_run_and_keeps_the_tables(
     ).fetchone()  # type: ignore[misc]
     assert status == "failed" and "sha256" in error
     assert table_dump(conn, "raw.cnes_unit_snapshot") == before
+
+
+def test_generate_reload_is_identical_and_records_the_sample(
+    conn: psycopg.Connection[Any], sources: Path
+) -> None:
+    from datetime import date
+
+    from vaccine_elt.generator.inputs import schedule_path
+    from vaccine_elt.generator.writer import run_generate
+
+    load_reference(conn, sources)
+    tables = ("raw.vaccine_lot", "raw.vaccination_event", "raw.vaccine_receipt")
+    kwargs = {"rows": 300, "seed": 5, "start": date(2024, 1, 1), "end": date(2025, 12, 31)}
+
+    first, results = run_generate(conn, sources, schedule_path(), **kwargs)  # type: ignore[arg-type]
+    dumps = {t: table_dump(conn, t) for t in tables}
+    run_generate(conn, sources, schedule_path(), **kwargs)  # type: ignore[arg-type]
+
+    assert {t: table_dump(conn, t) for t in tables} == dumps
+    assert len(dumps["raw.vaccination_event"]) == 300
+    assert {r.table for r in results} == set(tables)
+    status, fraction = conn.execute(
+        "SELECT status, sample_fraction FROM ops.load_run WHERE command = 'generate'"
+        " ORDER BY started_at DESC LIMIT 1"
+    ).fetchone()  # type: ignore[misc]
+    assert status == "succeeded" and fraction == first.sample_fraction
+    units = {row[0] for row in conn.execute("SELECT DISTINCT cnes_code FROM raw.vaccination_event")}
+    assert units == {"0000108"}  # the unit with an unmapped municipality is never used

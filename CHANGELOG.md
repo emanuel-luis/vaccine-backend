@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (phase 3: synthetic facts and analytics marts)
+- `vaccine-elt generate --rows --seed --start --end`: seeded, deterministic vaccination events,
+  lots and receipts following the 2026 childhood schedule, written in one transaction with the
+  run's `sample_fraction` in `ops.load_run`; hypothesis property tests and a Testcontainers reload
+  test.
+- dbt: synthetic staging, `int_vaccinations_enriched` (point-in-time join to the unit version),
+  `dim_vaccine_lot`, `fact_vaccination`, `fact_vaccine_receipt`, `mart_doses_by_state_month`,
+  `mart_doses_by_age_band`, `mart_coverage_by_state`, and singular tests (age windows, dose order,
+  receipts cover applications, unit version valid at date, coverage denominator, reconciliation
+  with raw).
+- `make generate` (`ROWS`, `SEED`); `make demo` now generates 200,000 events (CI: 20,000).
+
 ### Added (phase 2: reference data and dimensions)
 - Flyway `V2`-`V4`: `ops` run metadata (runs, per-source counts, rejects) and the `raw` landing
   tables for IBGE, CNES and the synthetic events of the next phase.

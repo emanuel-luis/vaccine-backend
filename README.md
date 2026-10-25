@@ -11,9 +11,8 @@
 ![dbt 1.12](https://img.shields.io/badge/dbt-1.12-FF694B?logo=dbt&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-> **Refactor in progress (phase 2 of 4).** Reference data, dimensions and SCD2 history are in
-> place. The synthetic vaccination facts, the analytics marts and the new endpoints come in the
-> next phases. Plan: [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md); decisions:
+> **Refactor in progress (phase 3 of 4).** Reference data, dimensions, SCD2 history, synthetic
+> vaccination facts and the analytics marts are in place. The new API endpoints come in phase 4. Plan: [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md); decisions:
 > [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## What this demonstrates
@@ -22,6 +21,11 @@
   `dim_demographic` as a junk dimension), surrogate keys, Unknown members, a declared grain per
   fact, and a type 2 slowly changing dimension for health units built deterministically from two
   dated CNES extracts. Contracts and grain in [docs/data-model.md](docs/data-model.md).
+- **Facts with declared grain.** `fact_vaccination` (one dose), `fact_vaccine_receipt` (one lot
+  shipment) and `fact_population` (census), joined to the health-unit version valid on the event
+  date; analytics marts for doses by state and month, by age band, and coverage against the census.
+- **Seeded synthetic data.** A deterministic generator follows the 2026 national childhood
+  schedule (age windows, intervals, dropout) and is property-tested with hypothesis.
 - **Reproducible ELT.** Public sources are vendored as normalized snapshots with a sha256 manifest;
   `load-reference` validates every row against a typed contract, records rejects, and replaces
   each raw table in one transaction (`TRUNCATE` + `COPY`), so reloads are idempotent.
@@ -48,7 +52,9 @@ flowchart LR
     MARTS[(marts: dimensions, facts)]
   end
   API[Spring Boot API]
+  GEN[Seeded generator]
   IBGE & SIDRA & CNES -->|vaccine-elt load-reference| RAW
+  GEN -->|vaccine-elt generate| RAW
   RAW --> STG -->|dbt build + tests| MARTS
   RAW -.-> OPS
   MARTS -.->|next phases| API
@@ -66,7 +72,7 @@ needed to run the Java tests.
 
 ```bash
 git clone https://github.com/emanuel-luis/vaccine-backend && cd vaccine-backend
-make demo   # .env from .env.example, Postgres + API up, reference data loaded, dbt build
+make demo   # .env, Postgres + API up, reference data, 200k synthetic doses, dbt build
 make down   # stop and remove the stack
 ```
 
@@ -96,6 +102,6 @@ compose.yaml  Dockerfile  Makefile
 
 ## Data and licenses
 
-Reference data is public (IBGE, Ministry of Health); vaccination events will be synthetic. Sources,
+Reference data is public (IBGE, Ministry of Health); vaccination events are synthetic. Sources,
 citations and the status of their terms of use are in [docs/data-sources.md](docs/data-sources.md).
 Code under the [MIT](LICENSE) license.
