@@ -9,6 +9,12 @@ adjustments listed first. Decisions are logged in [DECISIONS.md](DECISIONS.md).
   break `docker compose up --wait`). The ELT container waits for the API to be healthy, which
   implies the migrations ran. Tests and IDE runs migrate the same way.
 - File names: `compose.yaml`, `application.yml`.
+- **ELT runs on the host through uv**, not in an `elt` container: `make demo` maps `.env` to the
+  libpq `PG*` variables and runs `uv run --project elt vaccine-elt ...` and dbt against the compose
+  Postgres. One Dockerfile, no compose profile; CI installs uv anyway. The Python project lives in
+  `elt/` (its own `pyproject.toml` and `uv.lock`; dbt-core and dbt-postgres in a `dbt` group).
+- Legacy endpoints and the `src/python` loaders stay until PR4 replaces the API, so `main` keeps a
+  working demo after every phase; a PR4 migration drops the legacy tables.
 - PR1 already ships Flyway `V1` (the legacy operational schema in `public`, history in `ops`),
   so the warehouse migrations start at `V2`. Legacy tables are dropped by a later migration when
   the legacy endpoints go away.
