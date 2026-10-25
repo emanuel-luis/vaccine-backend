@@ -125,24 +125,22 @@ def load_reference(conn: psycopg.Connection[Any], directory: Path) -> list[runlo
             parse_source(directory, e, MUNICIPALITY, set()) for e in by_table[MUNICIPALITY.table]
         ]
         codes7 = {row[0] for source in municipality_sources for row in source.rows}
-        codes6 = {code // 10 for code in codes7 if isinstance(code, int)}
 
         def known_municipality(values: dict[str, Value]) -> str | None:
             code = values["municipality_code"]
             return None if code in codes7 else f"unknown IBGE municipality {code}"
-
-        def known_municipality6(values: dict[str, Value]) -> str | None:
-            code = values["municipality_code6"]
-            return None if code in codes6 else f"unknown 6-digit municipality {code}"
 
         census_keys: set[tuple[Value, ...]] = set()
         census_sources = [
             parse_source(directory, e, CENSUS_POPULATION, census_keys, known_municipality)
             for e in by_table[CENSUS_POPULATION.table]
         ]
+        # CNES rows land even when their municipality code has no IBGE match: dbt maps them to
+        # the Unknown municipality (docs/data-model.md). Rejecting them here would drop the unit
+        # or fake an "inactive" SCD2 version.
         cnes_keys: set[tuple[Value, ...]] = set()
         cnes_sources = [
-            parse_source(directory, e, CNES_UNIT_SNAPSHOT, cnes_keys, known_municipality6)
+            parse_source(directory, e, CNES_UNIT_SNAPSHOT, cnes_keys)
             for e in by_table[CNES_UNIT_SNAPSHOT.table]
         ]
 
