@@ -2,6 +2,7 @@ package io.github.emanuelluis.vaccine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -80,15 +81,23 @@ class ApplicationIT {
 
     @Test
     void dosesByAgeBandReturnsSexAndAge() throws Exception {
-        mvc.perform(get("/api/v1/doses/by-age-band").param("from", "2024-03").param("to", "2024-03"))
+        mvc.perform(get("/api/v1/doses/by-age-band")
+                        .param("from", "2024-03")
+                        .param("to", "2024-03")
+                        .param("state", "MA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.meta.count").value(3))
                 .andExpect(jsonPath("$.data[0].sex").value("F"))
-                .andExpect(jsonPath("$.data[0].ageBandYears").value(0));
+                .andExpect(jsonPath("$.data[0].ageBandYears").value(0))
+                .andExpect(jsonPath("$.data[2].sex").value("U"))
+                .andExpect(jsonPath("$.data[2].ageBandYears").value(nullValue()));
     }
 
     @Test
     void coverageIsFilteredByYear() throws Exception {
+        mvc.perform(get("/api/v1/coverage"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.count").value(2));
         mvc.perform(get("/api/v1/coverage").param("year", "2025").param("state", "MA"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.count").value(1))

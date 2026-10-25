@@ -1,5 +1,5 @@
--- Minimal stand-ins for the dbt marts the API reads (columns per docs/data-model.md). The
--- end-to-end CI job checks the API against the real dbt-built marts.
+-- Minimal stand-ins for the dbt marts the API reads (columns and types per the dbt contracts and
+-- docs/data-model.md). The end-to-end CI job checks the API against the real dbt-built marts.
 drop schema if exists marts cascade;
 create schema marts;
 
@@ -26,7 +26,7 @@ insert into marts.dim_health_unit values
      '2026-10-24', '9999-12-31', true);
 
 create table marts.mart_doses_by_state_month (
-    state_abbr text, state_name text, region_name text, year_month text, month_start date,
+    state_abbr char(2), state_name text, region_name text, year_month text, month_start date,
     vaccine_code text, dose_label text, doses bigint
 );
 insert into marts.mart_doses_by_state_month values
@@ -35,15 +35,16 @@ insert into marts.mart_doses_by_state_month values
     ('SP', 'São Paulo', 'Sudeste', '2024-04', '2024-04-01', 'ROTA', 'D2', 30);
 
 create table marts.mart_doses_by_age_band (
-    state_abbr text, year_month text, month_start date, vaccine_code text, sex text,
+    state_abbr char(2), year_month text, month_start date, vaccine_code text, sex char(1),
     age_band_years integer, doses bigint
 );
 insert into marts.mart_doses_by_age_band values
     ('MA', '2024-03', '2024-03-01', 'PENTA', 'F', 0, 7),
-    ('MA', '2024-03', '2024-03-01', 'PENTA', 'M', 0, 5);
+    ('MA', '2024-03', '2024-03-01', 'PENTA', 'M', 0, 5),
+    ('MA', '2024-03', '2024-03-01', 'PENTA', 'U', null, 1);
 
 create table marts.mart_coverage_by_state (
-    state_abbr text, state_name text, year integer, vaccine_code text, dose_label text,
+    state_abbr char(2), state_name text, year integer, vaccine_code text, dose_label text,
     target_age_years integer, doses bigint, target_population bigint, sample_fraction numeric,
     expected_population numeric, coverage_pct numeric(7, 2), numerator_is_synthetic boolean,
     denominator_source text
