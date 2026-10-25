@@ -1,0 +1,3 @@
+unit_type_code,unit_type_label,is_primary_care,label_source
+1,Posto de saúde,true,CNES type table (label not confirmed against a DATASUS domain table)
+2,Centro de saúde / unidade básica,true,CNES filling guide (municipal source)
