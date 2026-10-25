@@ -26,6 +26,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-vaccine}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-vaccine}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
+      VACCINE_INGEST_ENABLED: ${VACCINE_INGEST_ENABLED:-false}
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:
