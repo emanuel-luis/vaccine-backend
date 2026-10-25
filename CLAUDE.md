@@ -1,4 +1,4 @@
-# vaccine-backend
+# vaccine-warehouse
 
 Kimball-style vaccination warehouse: Postgres + Flyway, a Python ELT (`elt/`), dbt marts
 (`dbt/`) and a read-only Spring Boot 4.1 API on Java 21. Plan: `docs/REFACTOR_PLAN.md`,
@@ -8,7 +8,7 @@ decisions: `docs/DECISIONS.md`, contracts: `docs/data-model.md`, sources: `docs/
 - `make lint` (Spotless, ruff, ruff format, mypy, dbt parse: same as CI), `make format`
 - `make test-fast` (no Docker), `make test` = `test-java` (`mvn verify`) + `test-python`
   (pytest incl. Testcontainers, `-m "not external"`)
-- `make up` / `make down` (compose project `vaccine-backend`), `make load-reference`,
+- `make up` / `make down` (compose project `vaccine-warehouse`), `make load-reference`,
   `make generate` (`ROWS`, `SEED`), `make dbt-build`, `make smoke`, `make demo` (up +
   load-reference + generate + dbt build + smoke)
 - ELT and dbt by hand: `uv run --project elt vaccine-elt ...`,

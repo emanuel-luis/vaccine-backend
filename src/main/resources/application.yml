@@ -2,7 +2,7 @@
 # SPRING_DATASOURCE_PASSWORD); see .env.example. No credentials live in this file.
 spring:
   application:
-    name: vaccine-backend
+    name: vaccine-warehouse
   datasource:
     url: jdbc:postgresql://localhost:5432/vaccine
     username: vaccine
