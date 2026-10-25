@@ -28,6 +28,10 @@ sources:
         description: >
           Synthetic lot shipments, one per unit, vaccine and quarter, received on the quarter's
           first business day.
+      - name: live_dose
+        description: >
+          Synthetic doses posted to the API (migration V6), append-only. Every row carries the
+          generation that was open when it was inserted; dbt absorbs the closed generations.
 
   - name: ops
     schema: ops
@@ -35,3 +39,7 @@ sources:
     tables:
       - name: load_run
         description: One row per ELT run; the generate run records the sample_fraction.
+      - name: live_generation_close
+        description: >
+          One row per closed live generation (migration V6), written by the dbt on-run-start hook
+          through ops.close_live_generation().

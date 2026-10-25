@@ -1,5 +1,6 @@
 -- Fails (returns rows) when, for a unit and vaccine, the doses received up to the end of a quarter
--- are fewer than the doses applied up to the end of that quarter.
+-- are fewer than the doses applied up to the end of that quarter. Only generator doses count: live
+-- doses carry no stock.
 with applied as (
 
     select
@@ -12,6 +13,7 @@ with applied as (
     inner join {{ ref('dim_health_unit') }} as h on h.health_unit_key = f.health_unit_key
     inner join {{ ref('dim_vaccine') }} as v on v.vaccine_key = f.vaccine_key
     inner join {{ ref('dim_date') }} as d on d.date_key = f.date_key
+    where f.record_source = 'generator'
     group by h.cnes_code, v.vaccine_code, d.year * 4 + d.quarter
 
 ),
