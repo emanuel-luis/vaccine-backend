@@ -7,16 +7,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Boots the whole app against a real Postgres: Flyway migrates, Hibernate validates the schema. */
+/** Whole app against a real Postgres: Flyway migrates, the API reads mart fixtures and ops tables. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -28,23 +31,23 @@ class ApplicationIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private DataSource dataSource;
+
     @BeforeEach
-    void seed() {
-        jdbc.execute("TRUNCATE regiao, estado, municipio, unidade_basica, aplicacao_vacina, recebimento_vacina");
-        jdbc.update("INSERT INTO regiao (id, nome) VALUES (2, 'Nordeste')");
-        jdbc.update("INSERT INTO estado (id, id_regiao, nome, sigla) VALUES (21, 2, 'Maranhão', 'MA')");
-        jdbc.update("INSERT INTO municipio (id, id_estado, nome) VALUES (211130, 21, 'São Luís')");
-        jdbc.update("INSERT INTO unidade_basica (id, id_municipio, nome_fantasia, bairro, logradouro)"
-                + " VALUES (2453045, 211130, 'UBS CENTRO', 'CENTRO', 'RUA A - S/N')");
-        jdbc.update("INSERT INTO aplicacao_vacina (id, data_nascimento, sexo, id_unidade_basica, datahora_aplicacao)"
-                + " VALUES (gen_random_uuid(), '2023-01-10', 'F', 2453045, '2023-04-01 10:00')");
+    void loadFixtures() {
+        new ResourceDatabasePopulator(new ClassPathResource("fixtures/marts.sql")).execute(dataSource);
     }
 
     @Test
-    void flywayAppliedTheBaseline() {
+    void flywayAppliedEveryMigrationAndDroppedTheLegacySchema() {
         Integer applied = jdbc.queryForObject(
-                "SELECT count(*) FROM ops.flyway_schema_history WHERE success AND version = '1'", Integer.class);
-        assertThat(applied).isEqualTo(1);
+                "SELECT count(*) FROM ops.flyway_schema_history WHERE success AND version IS NOT NULL", Integer.class);
+        assertThat(applied).isEqualTo(5);
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public.unidade_basica') IS NULL", Boolean.class))
+                .isTrue();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('raw.vaccination_event') IS NOT NULL", Boolean.class))
+                .isTrue();
     }
 
     @Test
@@ -55,29 +58,92 @@ class ApplicationIT {
     }
 
     @Test
-    void dimensionEndpointJoinsTheGeographyHierarchy() throws Exception {
-        mvc.perform(get("/api/dimension"))
+    void dosesByStateMonthFiltersByRangeStateAndVaccine() throws Exception {
+        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2024-01").param("to", "2024-12"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(2453045))
-                .andExpect(jsonPath("$[0].siglaEstado").value("MA"))
-                .andExpect(jsonPath("$[0].regiao").value("Nordeste"));
+                .andExpect(jsonPath("$.meta.source").value("marts.mart_doses_by_state_month"))
+                .andExpect(jsonPath("$.meta.synthetic").value(true))
+                .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.data[0].stateAbbr").value("MA"))
+                .andExpect(jsonPath("$.data[0].monthStart").value("2024-03-01"))
+                .andExpect(jsonPath("$.data[0].doses").value(12));
+
+        mvc.perform(get("/api/v1/doses/by-state-month")
+                        .param("from", "2024-01")
+                        .param("to", "2025-12")
+                        .param("state", "MA")
+                        .param("vaccine", "PENTA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.data[1].yearMonth").value("2025-02"));
     }
 
     @Test
-    void renderedPageShowsTheUnitWithItsStateAndCity() throws Exception {
-        for (String query : new String[] {"", "?estado=Maranh", "?cidade=Lu", "?estado=Maranh&cidade=Lu"}) {
-            mvc.perform(get("/api/dimension/render" + query))
-                    .andExpect(status().isOk())
-                    .andExpect(content().string(containsString("UBS CENTRO")))
-                    .andExpect(content().string(containsString("São Luís")));
-        }
+    void dosesByAgeBandReturnsSexAndAge() throws Exception {
+        mvc.perform(get("/api/v1/doses/by-age-band").param("from", "2024-03").param("to", "2024-03"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.data[0].sex").value("F"))
+                .andExpect(jsonPath("$.data[0].ageBandYears").value(0));
     }
 
     @Test
-    void factEndpointAggregatesApplicationsInTheWindow() throws Exception {
-        mvc.perform(get("/api/fact").param("start", "2023-01-01").param("end", "2023-12-31"))
+    void coverageIsFilteredByYear() throws Exception {
+        mvc.perform(get("/api/v1/coverage").param("year", "2025").param("state", "MA"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].idUnidadeBasica").value(2453045))
-                .andExpect(jsonPath("$[0].count").value(1));
+                .andExpect(jsonPath("$.meta.count").value(1))
+                .andExpect(jsonPath("$.data[0].coveragePct").value(83.33))
+                .andExpect(jsonPath("$.data[0].numeratorIsSynthetic").value(true))
+                .andExpect(jsonPath("$.data[0].denominatorSource").value("IBGE Censo 2022, SIDRA 9514"));
+    }
+
+    @Test
+    void healthUnitHistoryShowsEveryVersion() throws Exception {
+        mvc.perform(get("/api/v1/health-units/0000264/history"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.synthetic").value(false))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].unitName").value("USF MARUIM"))
+                .andExpect(jsonPath("$.data[0].validTo").value("2026-10-24"))
+                .andExpect(jsonPath("$.data[1].isCurrent").value(true))
+                .andExpect(jsonPath("$.data[1].municipalityName").value("São Luís"));
+
+        mvc.perform(get("/api/v1/health-units/9999999/history"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
+    void latestRunPerCommandWithTableCounts() throws Exception {
+        mvc.perform(get("/api/v1/runs/latest"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.count").value(2))
+                .andExpect(jsonPath("$.data[0].command").value("generate"))
+                .andExpect(jsonPath("$.data[0].seed").value(42))
+                .andExpect(jsonPath("$.data[0].tables[0].rowsLoaded").value(200))
+                .andExpect(jsonPath("$.data[1].command").value("load-reference"));
+    }
+
+    @Test
+    void missingMartsAnswer503WithAHint() throws Exception {
+        jdbc.execute("DROP SCHEMA marts CASCADE");
+        mvc.perform(get("/api/v1/coverage"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.detail", containsString("make demo")));
+    }
+
+    @Test
+    void invalidParametersAnswer400() throws Exception {
+        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2024-13").param("to", "2024-12"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/doses/by-state-month")
+                        .param("from", "2024-01")
+                        .param("to", "2024-12")
+                        .param("state", "ma"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2020-01").param("to", "2024-12"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("36 months")));
     }
 }
