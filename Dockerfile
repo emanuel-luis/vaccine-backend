@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- build: compile and package with the Maven wrapper ----
-FROM eclipse-temurin:21.0.12.1_1-jdk-noble AS build
+FROM eclipse-temurin:24.0.2_12-jdk-noble AS build
 WORKDIR /workspace
 COPY mvnw ./
 COPY .mvn .mvn
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests package \
     && java -Djarmode=tools -jar target/vaccine-backend-*.jar extract --layers --launcher --destination extracted
 
 # ---- runtime: JRE only, non-root, layered jar ----
-FROM eclipse-temurin:21.0.12.1_1-jre-noble
+FROM eclipse-temurin:24.0.2_12-jre-noble
 RUN groupadd --system app && useradd --system --gid app --no-create-home app
 WORKDIR /app
 COPY --from=build /workspace/extracted/dependencies/ ./
