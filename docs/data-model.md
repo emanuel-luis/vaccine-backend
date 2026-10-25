@@ -156,6 +156,29 @@ calendar years.
 The official indicator divides by live births (SINASC). This warehouse uses a constant census
 denominator scaled to the synthetic sample, so `coverage_pct` shows the method, not real coverage.
 
+`mart_coverage_target_by_municipality`: unique on (`municipality_code`, `vaccine_code`,
+`dose_label`). The coverage denominator per municipality, one row per municipality (Unknown
+excluded) and coverage-indicator dose, zeros included. It does not depend on the year: the API
+divides doses by `expected_population` for any year, live-only years included.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `municipality_code` | int | 7-digit IBGE code |
+| `state_abbr` | char(2) | |
+| `vaccine_code` | text | |
+| `dose_label` | text | |
+| `target_age_years` | int | age cohort the indicator measures |
+| `target_population` | bigint | Censo 2022 population of that age in the municipality, both sexes; 0 without census rows |
+| `sample_fraction` | numeric | same value as in `mart_coverage_by_state` (latest succeeded `generate` run) |
+| `expected_population` | numeric | `target_population * sample_fraction` |
+| `numerator_is_synthetic` | boolean | always true |
+| `denominator_source` | text | `IBGE Censo 2022, SIDRA 9514` |
+
+Per state, `sum(target_population)` equals `mart_coverage_by_state.target_population` and
+`sum(expected_population)` equals its `expected_population`; the singular test
+`coverage_target_sums_to_state` checks it. Boa Esperança do Norte (MT, `5101837`, created after
+Censo 2022) has no census rows, so its denominator is 0.
+
 ## Synthetic events
 
 `vaccine-elt generate --rows N --seed S --start D --end D` writes `raw.vaccination_event`,
