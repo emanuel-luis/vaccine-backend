@@ -94,3 +94,71 @@ models:
         description: Latitude, null in the 2023 extract.
       - name: longitude
         description: Longitude, null in the 2023 extract.
+
+  - name: stg_synthetic__vaccine_lots
+    description: Synthetic vaccine lots, typed. Grain, one row per lot_number.
+    columns:
+      - name: lot_number
+        description: Lot number, e.g. PENTA-2024Q3 (vaccine and quarter), primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: vaccine_code
+        description: Vaccine code.
+        data_tests:
+          - not_null
+      - name: manufacturer_name
+        description: Synthetic manufacturer name.
+      - name: manufactured_on
+        description: Manufacturing date.
+      - name: expires_on
+        description: Expiry date.
+
+  - name: stg_synthetic__vaccination_events
+    description: >
+      Synthetic doses, typed. Grain, one row per event_id (one dose given to one person).
+    columns:
+      - name: event_id
+        description: Event id, primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: person_id
+        description: Synthetic person id.
+        data_tests:
+          - not_null
+      - name: birth_date
+        description: Birth date of the person.
+      - name: sex
+        description: F or M.
+      - name: cnes_code
+        description: CNES code of the unit that gave the dose.
+      - name: vaccine_code
+        description: Vaccine code.
+      - name: dose_label
+        description: Dose label within the vaccine.
+      - name: lot_number
+        description: Lot the dose came from.
+      - name: administered_at
+        description: Timestamp the dose was given, timestamptz (UTC).
+      - name: administered_on
+        description: Local calendar date (America/Sao_Paulo) of administered_at.
+        data_tests:
+          - not_null
+
+  - name: stg_synthetic__vaccine_receipts
+    description: Synthetic lot shipments, typed. Grain, one row per receipt_id.
+    columns:
+      - name: receipt_id
+        description: Receipt id, primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: cnes_code
+        description: CNES code of the receiving unit.
+      - name: lot_number
+        description: Lot shipped.
+      - name: received_on
+        description: Date received.
+      - name: doses_received
+        description: Doses in the shipment.

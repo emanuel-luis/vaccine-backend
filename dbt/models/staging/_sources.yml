@@ -5,7 +5,8 @@ sources:
     schema: raw
     description: >
       Landing tables owned by Flyway (migration V3) and filled by the ELT package. dbt only reads
-      them. The synthetic event tables (migration V4) are not declared yet.
+      them. The vaccine_lot, vaccination_event and vaccine_receipt tables (migration V4) hold
+      synthetic data from the seeded generator.
     tables:
       - name: ibge_municipality
         description: IBGE Localidades, one row per municipality (7-digit code) with state and region.
@@ -17,3 +18,20 @@ sources:
         description: >
           CNES primary-care units, one row per dated extract and unit. Uses 6-digit municipality
           codes. The 2023 extract has no unit type and no coordinates.
+      - name: vaccine_lot
+        description: Synthetic manufacturing lots, one per vaccine and calendar quarter.
+      - name: vaccination_event
+        description: >
+          Synthetic doses, one row per dose given to one synthetic person. administered_at is
+          timestamptz (UTC) of a local time between 08:00 and 17:00 Brasilia time.
+      - name: vaccine_receipt
+        description: >
+          Synthetic lot shipments, one per unit, vaccine and quarter, received on the quarter's
+          first business day.
+
+  - name: ops
+    schema: ops
+    description: Run metadata owned by Flyway (migration V2), written by the ELT package.
+    tables:
+      - name: load_run
+        description: One row per ELT run; the generate run records the sample_fraction.

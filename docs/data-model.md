@@ -35,8 +35,8 @@ flowchart LR
 - Every dimension except `dim_date` has one Unknown member with key
   `00000000-0000-0000-0000-000000000000`; facts point to it instead of holding nulls. Its natural
   values: municipality code `0` (state `NA`), CNES code `0000000`, vaccine and dose label
-  `UNKNOWN`, sex `U` with a null age band. A CNES unit whose municipality code has no IBGE match
-  maps to municipality `0`.
+  `UNKNOWN` (also the Unknown lot number), sex `U` with a null age band. A CNES unit whose
+  municipality code has no IBGE match maps to municipality `0`.
 - Seeds (`pni_child_schedule`, `cnes_unit_types`) live in schema `reference`.
 - Foreign keys are enforced by dbt `relationships` tests, not database constraints (dbt replaces
   mart tables on each build). Every fact table indexes its foreign-key columns.
@@ -68,7 +68,7 @@ has no unit type or coordinates.
 | Table | Grain | Keys | Measures |
 | --- | --- | --- | --- |
 | `fact_population` | municipality x sex x single-year age (0-6) x census year | `municipality_key`, `demographic_key`, `census_year` | `population` |
-| `fact_vaccination` | one dose given to one synthetic person at one unit on one date | `vaccination_id` (degenerate), `person_id` (degenerate), `date_key`, `vaccine_key`, `lot_key`, `health_unit_key` (version valid on the date), `municipality_key`, `demographic_key` (age band at the dose) | `age_days`, `doses` (always 1) |
+| `fact_vaccination` | one dose given to one synthetic person at one unit on one date | `vaccination_id` (degenerate), `person_id` (degenerate), `date_key`, `vaccine_key`, `lot_key`, `health_unit_key` (version valid on the date), `municipality_key`, `demographic_key` (age band at the dose) | `age_days`, `doses` (integer, always 1) |
 | `fact_vaccine_receipt` | one lot shipment received by one unit on one date | `receipt_id` (degenerate), `date_key`, `lot_key`, `health_unit_key`, `municipality_key` | `doses_received` |
 
 ## Analytics marts (API contract)
@@ -87,7 +87,8 @@ has no unit type or coordinates.
 | `doses` | bigint |
 
 `mart_doses_by_age_band`: unique on (`state_abbr`, `year_month`, `vaccine_code`, `sex`,
-`age_band_years`).
+`age_band_years`). Doses whose demographic falls back to Unknown keep sex `U` and a null age band,
+so the mart still reconciles with the fact.
 
 | Column | Type |
 | --- | --- |
@@ -110,7 +111,7 @@ coverage-indicator doses.
 | `vaccine_code` | text | |
 | `dose_label` | text | |
 | `target_age_years` | int | age cohort the indicator measures |
-| `doses` | bigint | indicator doses given in the year to children of the target age (synthetic) |
+| `doses` | bigint | indicator doses given in the year to children at most the target age, in completed years (synthetic) |
 | `target_population` | bigint | Censo 2022 population of that age in the state |
 | `sample_fraction` | numeric | synthetic persons per birth year / national age-0 population, from the generator run |
 | `expected_population` | numeric | `target_population * sample_fraction` |
@@ -118,5 +119,35 @@ coverage-indicator doses.
 | `numerator_is_synthetic` | boolean | always true |
 | `denominator_source` | text | `IBGE Censo 2022, SIDRA 9514` |
 
+`sample_fraction` comes from the latest succeeded `generate` run in `ops.load_run`; without one,
+the coverage columns are null and the `coverage_denominator_positive` test fails. Years only
+partly covered by the generator window would understate coverage; the default window is two full
+calendar years.
+
 The official indicator divides by live births (SINASC). This warehouse uses a constant census
 denominator scaled to the synthetic sample, so `coverage_pct` shows the method, not real coverage.
+
+## Synthetic events
+
+`vaccine-elt generate --rows N --seed S --start D --end D` writes `raw.vaccination_event`,
+`raw.vaccine_lot` and `raw.vaccine_receipt` in one transaction (TRUNCATE + COPY); the same seed and
+snapshots give identical rows. Rules (constants in `elt/src/vaccine_elt/generator/core.py`):
+
+- Each synthetic person has a home municipality drawn in proportion to its Censo 2022 population
+  aged 0 (municipalities with at least one active unit), a home unit drawn among the units active
+  at the window start, a sex drawn from the municipality's census ratio, and a birth date that
+  makes them 0-6 years old during the window. Every dose of a person is given at the home unit.
+- For each vaccine series of `dbt/seeds/pni_child_schedule.csv`: the first dose is taken with a
+  seeded per-state probability (82-97%), each next dose with 96%. The age at a dose is the
+  recommended age plus a seeded delay (exponential, mean 12 days), at least the minimum age and the
+  minimum interval after the previous dose; past the maximum age the series stops. Only doses
+  inside the window are recorded, so the first doses of older children are not in the data.
+- One lot per vaccine per calendar quarter; one receipt per unit, vaccine and quarter, on the
+  quarter's first business day, covering that quarter's doses plus 5-15% wastage in packs of 10.
+- `sample_fraction` = synthetic persons per birth year / national population aged 0.
+- The window must end before the next CNES extract after its start, so unit states (and therefore
+  the point-in-time join of the facts) do not change inside it.
+
+With 200,000 events the sample is about 0.2% of a birth cohort. Each person stays at one home unit,
+so doses reach about 17,000 of the 54,000 eligible units, each with a handful of doses, and
+receipts are almost as many as doses.
