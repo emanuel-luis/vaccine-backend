@@ -37,7 +37,6 @@ class FactControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
 
-        verify(service)
-                .getFactAplicacaoVacina(isNull(), isNull(), eq(PageRequest.of(2, 10)));
+        verify(service).getFactAplicacaoVacina(isNull(), isNull(), eq(PageRequest.of(2, 10)));
     }
 }
