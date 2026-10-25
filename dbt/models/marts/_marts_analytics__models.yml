@@ -135,7 +135,7 @@ models:
           - not_null
       - name: doses
         description: >
-          Indicator doses given in the year to children whose completed age at the dose equals
+          Indicator doses given in the year to children whose completed age at the dose is at most
           target_age_years (synthetic).
         data_type: bigint
         data_tests:

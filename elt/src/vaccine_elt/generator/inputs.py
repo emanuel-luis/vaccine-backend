@@ -110,11 +110,16 @@ def load_reference_data(directory: Path, window_start: date) -> ReferenceData:
         observations[row["cnes_code"]].append((day, row))
         snapshot_dates.add(day)
 
+    # Same rules as the SCD2 model: back-dated first extract, and a unit missing from the extract
+    # in force at the window start is inactive.
+    in_force = max((day for day in snapshot_dates if day <= window_start), default=None)
     units: dict[int, list[str]] = defaultdict(list)
     for cnes_code in sorted(observations):
         history = sorted(observations[cnes_code], key=lambda item: item[0])
-        before = [row for day, row in history if day <= window_start]
-        state = before[-1] if before else history[0][1]
+        before = [(day, row) for day, row in history if day <= window_start]
+        if before and before[-1][0] != in_force:
+            continue
+        state = before[-1][1] if before else history[0][1]
         municipality = code7_by_code6.get(int(state["municipality_code6"]))
         if state["is_active"] == "true" and municipality is not None:
             units[municipality].append(cnes_code)

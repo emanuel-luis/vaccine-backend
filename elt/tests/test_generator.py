@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from itertools import pairwise
+from pathlib import Path
 
 import pytest
 from hypothesis import given, settings
@@ -150,3 +151,95 @@ def test_calendar_helpers() -> None:
         and len(months_between(START, END)) == 24
     )
     assert START - timedelta(days=1) < START
+
+
+def test_unit_missing_from_the_extract_in_force_is_not_eligible(tmp_path: Path) -> None:
+    from vaccine_elt import csvio
+    from vaccine_elt.generator.inputs import load_reference_data
+    from vaccine_elt.manifest import Manifest, SourceEntry, sha256_file, write_manifest
+    from vaccine_elt.sources import cnes, ibge
+
+    manifest = Manifest()
+
+    def add(source_id: str, table: str, columns: list[str], rows: list[dict[str, str]]) -> None:
+        path = tmp_path / f"{source_id}.csv.gz"
+        csvio.write_snapshot(path, columns, rows)
+        manifest.upsert(
+            SourceEntry(
+                id=source_id,
+                path=path.name,
+                table=table,
+                publisher="test",
+                source_url="https://example.org",
+                documentation_url="https://example.org",
+                license_note="test",
+                citation="test",
+                retrieved_at="2026-10-25T00:00:00Z",
+                snapshot_date=rows[0].get("snapshot_date", "2026-10-25"),
+                transform="none",
+                columns=columns,
+                rows=len(rows),
+                sha256=sha256_file(path),
+            )
+        )
+
+    def unit(day: str, code: str) -> dict[str, str]:
+        return {
+            "snapshot_date": day,
+            "cnes_code": code,
+            "municipality_code6": "211130",
+            "unit_name": code,
+            "neighborhood": "",
+            "street": "",
+            "unit_type_code": "2",
+            "is_active": "true",
+            "latitude": "",
+            "longitude": "",
+        }
+
+    add(
+        "m",
+        "raw.ibge_municipality",
+        ibge.MUNICIPALITY_COLUMNS,
+        [
+            {
+                "municipality_code": "2111300",
+                "municipality_name": "São Luís",
+                "state_code": "21",
+                "state_abbr": "MA",
+                "state_name": "Maranhão",
+                "region_code": "2",
+                "region_abbr": "NE",
+                "region_name": "Nordeste",
+            },
+        ],
+    )
+    add(
+        "c",
+        "raw.ibge_census_population",
+        ibge.CENSUS_COLUMNS,
+        [
+            {
+                "census_year": "2022",
+                "municipality_code": "2111300",
+                "sex": "F",
+                "age_years": "0",
+                "population": "100",
+            },
+        ],
+    )
+    add(
+        "u2023",
+        "raw.cnes_unit_snapshot",
+        cnes.COLUMNS,
+        [unit("2023-06-02", "0000001"), unit("2023-06-02", "0000002")],
+    )
+    add("u2026", "raw.cnes_unit_snapshot", cnes.COLUMNS, [unit("2026-10-24", "0000001")])
+    write_manifest(tmp_path, manifest)
+
+    early = load_reference_data(tmp_path, date(2024, 1, 1))
+    late = load_reference_data(tmp_path, date(2027, 1, 1))
+    assert early.units_by_municipality == {2111300: ["0000001", "0000002"]}
+    assert early.next_snapshot_date == date(2026, 10, 24)
+    assert late.units_by_municipality == {2111300: ["0000001"]}
+    assert late.next_snapshot_date is None

@@ -54,7 +54,10 @@ grid as (
 
 ),
 
--- Indicator doses given in the year to children whose completed age at the dose is the target age.
+-- Indicator doses given in the year to children not older than the target age at the dose (in
+-- completed years). "Not older" rather than "equal": the schedule's minimum ages are day counts
+-- (365, 1460), and a dose at exactly that age falls one day before the birthday when a 29 February
+-- lies in between.
 doses as (
 
     select
@@ -69,7 +72,7 @@ doses as (
         and v.is_coverage_indicator
     inner join {{ ref('dim_demographic') }} as g
         on g.demographic_key = f.demographic_key
-        and g.age_band_years = v.coverage_target_age_years
+        and g.age_band_years <= v.coverage_target_age_years
     inner join {{ ref('dim_municipality') }} as m on m.municipality_key = f.municipality_key
     inner join {{ ref('dim_date') }} as d on d.date_key = f.date_key
     group by m.state_abbr, d.year, f.vaccine_key

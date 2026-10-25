@@ -111,7 +111,7 @@ coverage-indicator doses.
 | `vaccine_code` | text | |
 | `dose_label` | text | |
 | `target_age_years` | int | age cohort the indicator measures |
-| `doses` | bigint | indicator doses given in the year to children of the target age (synthetic) |
+| `doses` | bigint | indicator doses given in the year to children at most the target age, in completed years (synthetic) |
 | `target_population` | bigint | Censo 2022 population of that age in the state |
 | `sample_fraction` | numeric | synthetic persons per birth year / national age-0 population, from the generator run |
 | `expected_population` | numeric | `target_population * sample_fraction` |
@@ -148,5 +148,6 @@ snapshots give identical rows. Rules (constants in `elt/src/vaccine_elt/generato
 - The window must end before the next CNES extract after its start, so unit states (and therefore
   the point-in-time join of the facts) do not change inside it.
 
-With 200,000 events the sample is about 0.2% of a birth cohort spread over 54,000 units, so most
-units receive a handful of doses and receipts are almost as many as doses.
+With 200,000 events the sample is about 0.2% of a birth cohort. Each person stays at one home unit,
+so doses reach about 17,000 of the 54,000 eligible units, each with a handful of doses, and
+receipts are almost as many as doses.
