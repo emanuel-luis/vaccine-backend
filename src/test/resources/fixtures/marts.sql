@@ -23,7 +23,44 @@ insert into marts.dim_health_unit values
      '2015-01-01', '2026-10-24', false),
     ('22222222-2222-2222-2222-222222222222', '0000264', 'USF BOM SUCESSO', 'CENTRO', 2111300, true,
      'RUA A - 10', 2, 'Centro de saúde / unidade básica', -2.530000, -44.300000,
-     '2026-10-24', '9999-12-31', true);
+     '2026-10-24', '9999-12-31', true),
+    ('22222222-2222-2222-2222-222222222223', '0000001', 'USF INATIVA', 'CENTRO', 2111300, false,
+     null, null, null, null, null, '2015-01-01', '9999-12-31', true),
+    ('22222222-2222-2222-2222-222222222224', '0000002', 'USF SEM MUNICIPIO', 'CENTRO', 0, true,
+     null, null, null, null, null, '2015-01-01', '9999-12-31', true);
+
+create table marts.dim_vaccine (
+    vaccine_key uuid, vaccine_code text, vaccine_name text, dose_label text, dose_number integer,
+    recommended_age_days integer, min_age_days integer, max_age_days integer, min_interval_days integer,
+    is_coverage_indicator boolean, coverage_target_age_years integer
+);
+insert into marts.dim_vaccine values
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D1', 1, 60, 42, 730, 0, false, null),
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D2', 2, 120, 42, 730, 30, false, null),
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D3', 3, 180, 42, 730, 30, true, 1),
+    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D1', 1, 60, 42, 105, 0, false, null),
+    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D2', 2, 120, 70, 240, 30, true, 1),
+    (gen_random_uuid(), 'BCG', 'BCG', 'D1', 1, 0, 0, null, 0, false, null);
+
+create table marts.dim_vaccine_lot (
+    lot_key uuid, lot_number text, vaccine_code text, manufacturer_name text, manufactured_on date,
+    expires_on date
+);
+insert into marts.dim_vaccine_lot values
+    (gen_random_uuid(), 'LOT-PENTA-OK', 'PENTA', 'Fab A', '2026-01-01', '2027-12-31'),
+    (gen_random_uuid(), 'LOT-PENTA-OLD', 'PENTA', 'Fab A', '2025-01-01', '2026-10-01'),
+    (gen_random_uuid(), 'LOT-ROTA-OK', 'ROTA', 'Fab B', '2026-01-01', '2027-12-31');
+
+-- Batch layer of the dashboards (dbt contract: mart_doses_daily). batch_generation is the same on
+-- every row: the generation the build absorbed (0 = no live dose absorbed).
+create table marts.mart_doses_daily (
+    date_day date, state_abbr char(2), municipality_code integer, cnes_code text, vaccine_code text,
+    dose_label text, age_band_years integer, doses bigint, batch_generation bigint
+);
+insert into marts.mart_doses_daily values
+    ('2026-10-20', 'MA', 2111300, '0000264', 'PENTA', 'D1', 0, 10, 0),
+    ('2026-10-24', 'MA', 2111300, '0000264', 'PENTA', 'D2', 0, 5, 0),
+    ('2026-10-24', 'SP', 3550308, '0000999', 'ROTA', 'D1', null, 30, 0);
 
 create table marts.mart_doses_by_state_month (
     state_abbr char(2), state_name text, region_name text, year_month text, month_start date,
@@ -66,3 +103,7 @@ insert into ops.load_run (run_id, command, params, seed, sample_fraction, starte
 insert into ops.load_run_table values
     ('33333333-3333-3333-3333-333333333332', 'raw.vaccination_event', 'generator', null, 200, 200, 0,
      '2026-10-25 10:03+00');
+
+-- Speed layer back to its initial state: every test starts at generation 1 with no live rows.
+truncate raw.live_dose, live.dose_daily, ops.ingest_reject, ops.live_generation_close;
+update ops.live_generation set generation = 1;
