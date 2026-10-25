@@ -4,7 +4,9 @@ SHELL := /usr/bin/env bash
 MVN := ./mvnw -B -ntp
 COMPOSE := docker compose
 UV := uv run --project elt
-DBT := $(UV) dbt --project-dir dbt --profiles-dir dbt
+DBT := $(UV) dbt
+# dbt takes these options after the subcommand only: `$(DBT) <command> $(DBT_DIRS)`.
+DBT_DIRS := --project-dir dbt --profiles-dir dbt
 API_URL ?= http://localhost:8080
 
 # Load .env and map it to the libpq variables read by the ELT, dbt and the legacy loader, so the
@@ -24,14 +26,14 @@ help: ## Show this help
 install: ## Resolve Maven deps, sync the ELT env (uv) and install dbt packages
 	$(MVN) dependency:go-offline
 	uv sync --locked --project elt
-	$(NO_DB) $(DBT) deps
+	$(NO_DB) $(DBT) deps $(DBT_DIRS)
 
 lint: dbt-deps ## Everything the CI lint job runs: Spotless, ruff, mypy, dbt parse
 	$(MVN) spotless:check
 	$(UV) ruff check elt
 	$(UV) ruff format --check elt
 	cd elt && uv run mypy
-	$(NO_DB) $(DBT) parse
+	$(NO_DB) $(DBT) parse $(DBT_DIRS)
 
 format: ## Apply Spotless and ruff formatting
 	$(MVN) spotless:apply
@@ -70,10 +72,10 @@ load-reference: env ## Verify the vendored public snapshots and load them into r
 	$(WITH_PG) $(UV) vaccine-elt load-reference
 
 dbt-deps: ## Install dbt packages (dbt_utils)
-	$(NO_DB) $(DBT) deps
+	$(NO_DB) $(DBT) deps $(DBT_DIRS)
 
 dbt-build: env dbt-deps ## Build and test staging, intermediate and marts
-	$(WITH_PG) $(DBT) build
+	$(WITH_PG) $(DBT) build $(DBT_DIRS)
 
 demo: up seed load-reference dbt-build ## One command: stack, reference data, dbt marts, API answering
 	curl -fsS "$(API_URL)/actuator/health" && echo
