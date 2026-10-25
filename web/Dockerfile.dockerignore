@@ -1,0 +1,9 @@
+# Build context is the repo root; the web image needs only web/ (docs/api/ for gen:api).
+*
+!web
+!docs/api
+**/node_modules
+web/dist
+web/coverage
+web/test-results
+web/playwright-report

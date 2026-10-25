@@ -1,0 +1,7 @@
+{
+  "apiBaseUrl": "",
+  "oidc": {
+    "authority": "http://localhost:8180/realms/vaccine",
+    "clientId": "vaccine-web"
+  }
+}
