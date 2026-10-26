@@ -3,7 +3,7 @@ package io.github.emanuelluis.vaccine.security;
 import java.util.Map;
 
 /** IBGE state codes: the first two digits of a municipality code. A static table, no database lookup. */
-final class UfCodes {
+public final class UfCodes {
 
     private static final Map<Integer, String> BY_CODE = Map.ofEntries(
             Map.entry(11, "RO"),
@@ -37,7 +37,7 @@ final class UfCodes {
     private UfCodes() {}
 
     /** State abbreviation of a 7-digit municipality code, or null when the prefix is not a state. */
-    static String abbrOfMunicipality(int municipalityCode) {
+    public static String abbrOfMunicipality(int municipalityCode) {
         return BY_CODE.get(municipalityCode / 100_000);
     }
 

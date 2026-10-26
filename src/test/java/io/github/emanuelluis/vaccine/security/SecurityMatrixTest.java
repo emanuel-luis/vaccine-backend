@@ -5,13 +5,16 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.analytics.AnalyticsRepository;
+import io.github.emanuelluis.vaccine.campaigns.CampaignRepository;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.Rows;
 import io.github.emanuelluis.vaccine.dashboard.MergedDosesRepository;
 import io.github.emanuelluis.vaccine.ingest.DoseIngestRepository;
@@ -66,6 +69,7 @@ class SecurityMatrixTest {
 
     private static final String RANGE = "from=2026-10-01&to=2026-10-31";
     private static final String MONTHS = "from=2026-01&to=2026-06";
+    private static final String ID = "00000000-0000-0000-0000-000000000001";
 
     static Stream<Arguments> matrix() {
         // path, then the status for each caller in CALLERS order
@@ -139,6 +143,20 @@ class SecurityMatrixTest {
                         403,
                         403),
                 row("GET /api/v1/exports/health-units?municipality=2927408&" + RANGE, 401, 403, 403, 200, 403, 403),
+                // low-coverage alerts: same scope rules as the map
+                row("GET /api/v1/alerts/low-coverage?level=state", 401, 403, 200, 200, 200, 403),
+                row("GET /api/v1/alerts/low-coverage?level=municipality&state=BA", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/alerts/low-coverage?level=municipality&state=SP", 401, 403, 403, 200, 200, 403),
+                row("GET /api/v1/alerts/low-coverage?level=municipality", 401, 400, 400, 400, 400, 403),
+                row("GET /api/v1/alerts/low-coverage", 401, 400, 400, 400, 400, 403),
+                // campaigns: readers read, only gestor writes (the mock repository finds nothing: 404)
+                row("GET /api/v1/campaigns", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/campaigns?active=true", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/campaigns/" + ID, 401, 404, 404, 404, 404, 403),
+                row("POST /api/v1/campaigns", 401, 403, 403, 400, 403, 403),
+                row("PUT /api/v1/campaigns/" + ID, 401, 403, 403, 400, 403, 403),
+                row("DELETE /api/v1/campaigns/" + ID, 401, 403, 403, 404, 403, 403),
+                row("PATCH /api/v1/campaigns/" + ID, 401, 403, 403, 403, 403, 403),
                 // state grain (S>=UF): municipality callers are out
                 row("GET /api/v1/doses/by-state-month?" + MONTHS, 401, 403, 200, 200, 200, 403),
                 row("GET /api/v1/doses/by-age-band?" + MONTHS, 401, 403, 200, 200, 200, 403),
@@ -176,6 +194,9 @@ class SecurityMatrixTest {
     private ReferenceRepository reference;
 
     @MockitoBean
+    private CampaignRepository campaigns;
+
+    @MockitoBean
     private DoseValidator validator;
 
     @MockitoBean
@@ -195,6 +216,7 @@ class SecurityMatrixTest {
         when(merged.byVaccine(any(), any(), any())).thenReturn(Rows.empty());
         when(merged.byAgeBand(any(), any(), any())).thenReturn(Rows.empty());
         when(merged.map(any())).thenReturn(Rows.empty());
+        when(merged.lowCoverage(any(), anyInt())).thenReturn(Rows.empty());
         when(merged.healthUnits(any(), any(), any())).thenReturn(Rows.empty());
         when(merged.dosesDaily(any(), any(), any(), anyInt())).thenReturn(Rows.empty());
         // JdbcClient: sql(..).param(..).query(X).list() answers one unit for the unit query, nothing else.
@@ -230,13 +252,20 @@ class SecurityMatrixTest {
 
     private static MockHttpServletRequestBuilder request(String endpoint) {
         String[] parts = endpoint.split(" ", 2);
-        if (parts[0].equals("POST")) {
-            return post(parts[1])
-                    .header("Idempotency-Key", "matrix-1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{}");
-        }
-        return get(parts[1]);
+        return switch (parts[0]) {
+            case "POST" ->
+                post(parts[1])
+                        .header("Idempotency-Key", "matrix-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}");
+            case "PUT" -> put(parts[1]).contentType(MediaType.APPLICATION_JSON).content("{}");
+            case "DELETE" -> delete(parts[1]);
+            case "PATCH" ->
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(parts[1])
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}");
+            default -> get(parts[1]);
+        };
     }
 
     @ParameterizedTest(name = "{0}")
