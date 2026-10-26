@@ -66,8 +66,10 @@ class OpenApiSpecIT {
     void requiredAndNullablePropertiesFollowTheJavaTypes() throws Exception {
         String schemas = "$.components.schemas.";
         mvc.perform(get("/v3/api-docs"))
-                .andExpect(jsonPath(schemas + "SummaryData.required", hasSize(5)))
-                .andExpect(jsonPath(schemas + "SummaryData.properties.*", hasSize(5)))
+                .andExpect(jsonPath(
+                        schemas + "SummaryData.required",
+                        containsInAnyOrder("today", "batchGeneration", "suppressedFields")))
+                .andExpect(jsonPath(schemas + "SummaryData.properties.*", hasSize(6)))
                 .andExpect(jsonPath(schemas + "Meta.required", not(hasItem("batchGeneration"))))
                 .andExpect(jsonPath(schemas + "Meta.required", hasItem("source")))
                 .andExpect(jsonPath(schemas + "Meta.properties.batchGeneration.type", contains("integer", "null")))
