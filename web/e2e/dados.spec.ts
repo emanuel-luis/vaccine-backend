@@ -13,11 +13,11 @@ test('lists the sources and runs a reconciliation with its log', async ({ page }
   const button = page.getByRole('button', { name: 'Reconciliar' })
   await expect(button).toBeEnabled({ timeout: 60_000 })
   const links = page.getByRole('table').getByRole('link', { name: 'Reconciliação' })
-  const previous = await links.first().getAttribute('href')
+  const before = await links.count()
   await button.click()
 
-  // Newest first: wait until the top row is a new job, then open it (not an older reconciliation).
-  await expect(links.first()).not.toHaveAttribute('href', previous ?? '')
+  // Newest first: wait for the new row (the list shows 20 at most, far above what a demo run has).
+  await expect(links).toHaveCount(before + 1)
   await links.first().click()
   await expect(page).toHaveURL(/\/dados\/execucoes\/.+/)
   await expect(page.getByRole('log', { name: 'Registro da execução' }).locator('.log-line').first()).toBeVisible({
