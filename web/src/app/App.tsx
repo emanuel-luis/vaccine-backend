@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AuthProvider } from 'react-oidc-context'
 import { BrowserRouter } from 'react-router'
 import { shouldRetry } from '../api/client'
+import { restoreReturnPath } from '../auth/returnTo'
 import { type AppConfig, ConfigContext } from '../config'
 import { AppRoutes } from './routes'
 
@@ -17,8 +18,8 @@ export function App({ config }: { config: AppConfig }) {
     post_logout_redirect_uri: window.location.origin,
     scope: 'openid profile',
     automaticSilentRenew: true,
-    // Drop code/state from the URL after the callback.
-    onSigninCallback: () => window.history.replaceState({}, document.title, window.location.pathname),
+    // Drops code/state from the URL and restores the deep link saved before login.
+    onSigninCallback: restoreReturnPath,
   }
   return (
     <ConfigContext.Provider value={config}>
