@@ -119,3 +119,17 @@ export function bbox(geo: {
   for (const f of geo.features) if (f.geometry) walk(f.geometry.coordinates)
   return [w, s, e, n]
 }
+
+/** View for the map: the selected area when it is in the geometry, otherwise everything. */
+export function viewBbox(
+  geo: { features: { properties: { codarea: string }; geometry: { coordinates: Position } | null }[] },
+  code?: string,
+): [number, number, number, number] {
+  const hit = code ? geo.features.filter((f) => f.properties.codarea === code) : []
+  return bbox({ features: hit.length > 0 ? hit : geo.features })
+}
+
+/** fitBounds options: zoom in on a selection (animated unless the user prefers reduced motion). */
+export function fitOptions(selected: boolean, reducedMotion: boolean): { padding: number; animate: boolean } {
+  return { padding: selected ? 48 : 16, animate: selected && !reducedMotion }
+}
