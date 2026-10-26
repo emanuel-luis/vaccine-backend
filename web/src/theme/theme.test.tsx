@@ -21,11 +21,13 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button', { name: 'Tema escuro' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('toggles and persists the choice', async () => {
+  it('toggles and persists the choice, keeping a fixed name', async () => {
     systemPrefers(false)
     render(<ThemeToggle />)
     expect(document.documentElement.dataset.theme).toBe('light')
+    expect(screen.getByRole('button', { name: 'Tema escuro' })).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(screen.getByRole('button'))
+    expect(screen.getByRole('button', { name: 'Tema escuro' })).toHaveAttribute('aria-pressed', 'true')
     expect(document.documentElement.dataset.theme).toBe('dark')
     expect(localStorage.getItem('theme')).toBe('dark')
   })
