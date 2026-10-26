@@ -12,6 +12,8 @@ from typing import Any
 
 import psycopg
 
+from vaccine_elt.manifest import SourceEntry
+
 MAX_ERROR_CHARS = 2000
 
 
@@ -82,6 +84,35 @@ def record_source(conn: psycopg.Connection[Any], run_id: uuid.UUID, result: Sour
             datetime.now(UTC),
         ),
     )
+
+
+def record_run_sources(
+    conn: psycopg.Connection[Any], run_id: uuid.UUID, entries: Iterable[SourceEntry]
+) -> None:
+    """The manifest entries this run verified, geometries included (`table_name` NULL)."""
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO ops.load_run_source (run_id, source_id, path, table_name, publisher,"
+            " source_url, license_note, license_status, retrieved_at, snapshot_date, rows, sha256,"
+            " verified) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, true)",
+            [
+                (
+                    run_id,
+                    e.id,
+                    e.path,
+                    e.table,
+                    e.publisher,
+                    e.source_url,
+                    e.license_note,
+                    e.license_status or "to_be_confirmed",
+                    e.retrieved_at,
+                    e.snapshot_date,
+                    e.rows,
+                    e.sha256,
+                )
+                for e in entries
+            ],
+        )
 
 
 def record_rejects(

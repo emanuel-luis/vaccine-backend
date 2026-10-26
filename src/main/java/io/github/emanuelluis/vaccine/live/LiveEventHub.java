@@ -43,7 +43,8 @@ public class LiveEventHub {
         final Set<Integer> municipalities = new TreeSet<>();
     }
 
-    private record Subscriber(SseEmitter emitter, RegionFilter region, Pending[] pending) {}
+    /** {@code admin} is the data-admin role of the token at subscribe time; only admins get {@code job} events. */
+    private record Subscriber(SseEmitter emitter, RegionFilter region, boolean admin, Pending[] pending) {}
 
     private final List<Subscriber> subscribers = new CopyOnWriteArrayList<>();
     private final AtomicLong tick = new AtomicLong();
@@ -65,8 +66,8 @@ public class LiveEventHub {
         scheduler.shutdownNow();
     }
 
-    public void register(SseEmitter emitter, RegionFilter region) {
-        var subscriber = new Subscriber(emitter, region, new Pending[] {new Pending()});
+    public void register(SseEmitter emitter, RegionFilter region, boolean admin) {
+        var subscriber = new Subscriber(emitter, region, admin, new Pending[] {new Pending()});
         subscribers.add(subscriber);
         Runnable remove = () -> subscribers.remove(subscriber);
         emitter.onCompletion(remove);
@@ -83,6 +84,7 @@ public class LiveEventHub {
             switch (channel) {
                 case "dose_event" -> onDose(mapper.readTree(payload));
                 case "batch_event" -> relay("batch", mapper.readTree(payload));
+                case "job_event" -> relayJob(mapper.readTree(payload));
                 default -> log.debug("ignoring notification on {}", channel);
             }
         } catch (RuntimeException e) {
@@ -115,6 +117,16 @@ public class LiveEventHub {
         data.put("invocationId", payload.path("invocationId").asString());
         for (Subscriber s : subscribers) {
             send(s, SseEmitter.event().name(event).data(data));
+        }
+    }
+
+    /** The worker's payload goes out as written ({jobId, kind, status, seq?, level?, message?}). */
+    private void relayJob(JsonNode payload) {
+        String json = payload.toString();
+        for (Subscriber s : subscribers) {
+            if (s.admin()) {
+                send(s, SseEmitter.event().name("job").data(json));
+            }
         }
     }
 

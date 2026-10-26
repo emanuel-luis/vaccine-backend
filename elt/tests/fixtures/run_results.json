@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v6.json",
+    "dbt_version": "1.12.0",
+    "generated_at": "2026-10-26T12:00:05.250000Z",
+    "invocation_id": "5f1c2a9e-0d4b-4c57-9a11-3b7e6d2f8c10"
+  },
+  "results": [
+    {
+      "status": "success",
+      "timing": [],
+      "thread_id": "Thread-1",
+      "execution_time": 0.41,
+      "adapter_response": {},
+      "message": "CREATE VIEW",
+      "failures": null,
+      "unique_id": "model.vaccine_warehouse.stg_cnes_unit"
+    },
+    {
+      "status": "pass",
+      "timing": [],
+      "thread_id": "Thread-2",
+      "execution_time": 0.12,
+      "adapter_response": {},
+      "message": null,
+      "failures": 0,
+      "unique_id": "test.vaccine_warehouse.not_null_stg_cnes_unit_cnes_code.8a1b2c3d4e"
+    },
+    {
+      "status": "fail",
+      "timing": [],
+      "thread_id": "Thread-3",
+      "execution_time": 0.3,
+      "adapter_response": {},
+      "message": "Got 3 results, configured to fail if != 0",
+      "failures": 3,
+      "unique_id": "test.vaccine_warehouse.marts_reconcile_with_raw"
+    },
+    {
+      "status": "success",
+      "timing": [],
+      "thread_id": "Thread-1",
+      "execution_time": 1.5,
+      "adapter_response": {},
+      "message": "INSERT 0 12",
+      "failures": null,
+      "unique_id": "seed.vaccine_warehouse.pni_child_schedule"
+    }
+  ],
+  "elapsed_time": 7.5,
+  "args": {
+    "which": "build",
+    "project_dir": "/app/dbt"
+  }
+}

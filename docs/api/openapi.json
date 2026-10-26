@@ -12,6 +12,285 @@
     "bearer-jwt" : [ ]
   } ],
   "paths" : {
+    "/api/v1/admin/dbt/invocations" : {
+      "get" : {
+        "operationId" : "invocations",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDbtInvocation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/dbt/invocations/{id}/results" : {
+      "get" : {
+        "operationId" : "results",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "resourceType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDbtNodeResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/ingest" : {
+      "get" : {
+        "operationId" : "ingest",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "hours",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 24,
+            "maximum" : 168,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemIngest"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/jobs" : {
+      "get" : {
+        "operationId" : "jobs",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseJob"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      },
+      "post" : {
+        "operationId" : "queue",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JobRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemJob"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/jobs/{id}" : {
+      "get" : {
+        "operationId" : "job",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemJob"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/jobs/{id}/log" : {
+      "get" : {
+        "operationId" : "log",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "afterSeq",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 500,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseJobLogLine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/reconciliation" : {
+      "get" : {
+        "operationId" : "reconciliation",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 10,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseReconciliation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/sources" : {
+      "get" : {
+        "operationId" : "sources",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemSources"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
     "/api/v1/alerts/low-coverage" : {
       "get" : {
         "operationId" : "lowCoverage",
@@ -1120,11 +1399,47 @@
         },
         "required" : [ "data", "meta" ]
       },
+      "ApiItemIngest" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Ingest"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiItemJob" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
       "ApiItemMe" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/Me"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiItemSources" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Sources"
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -1166,6 +1481,36 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/Campaign"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseDbtInvocation" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DbtInvocation"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseDbtNodeResult" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DbtNodeResult"
             }
           },
           "meta" : {
@@ -1234,6 +1579,36 @@
         },
         "required" : [ "data", "meta" ]
       },
+      "ApiResponseJob" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Job"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseJobLogLine" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JobLogLine"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
       "ApiResponseLowCoverage" : {
         "type" : "object",
         "properties" : {
@@ -1256,6 +1631,21 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/MapArea"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseReconciliation" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Reconciliation"
             }
           },
           "meta" : {
@@ -1485,6 +1875,48 @@
         },
         "required" : [ "endsOn", "name", "regionScope", "startsOn", "targetDoses", "vaccineCode" ]
       },
+      "Check" : {
+        "type" : "object",
+        "properties" : {
+          "actualTotal" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "batchGeneration" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "checkName" : {
+            "type" : "string"
+          },
+          "diffs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Diff"
+            }
+          },
+          "expectedTotal" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "keysCompared" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "keysMismatched" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "openGeneration" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "passed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "actualTotal", "checkName", "diffs", "expectedTotal", "keysCompared", "keysMismatched", "openGeneration", "passed" ]
+      },
       "DailyPoint" : {
         "type" : "object",
         "properties" : {
@@ -1501,6 +1933,88 @@
           }
         },
         "required" : [ "date", "suppressed" ]
+      },
+      "DbtInvocation" : {
+        "type" : "object",
+        "properties" : {
+          "batchGeneration" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "command" : {
+            "type" : "string"
+          },
+          "dbtVersion" : {
+            "type" : "string"
+          },
+          "elapsedS" : {
+            "type" : [ "number", "null" ]
+          },
+          "generatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "invocationId" : {
+            "type" : "string"
+          },
+          "jobId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "success" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "command", "dbtVersion", "generatedAt", "invocationId", "success" ]
+      },
+      "DbtNodeResult" : {
+        "type" : "object",
+        "properties" : {
+          "executionTimeS" : {
+            "type" : [ "number", "null" ]
+          },
+          "failures" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "resourceType" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "uniqueId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "resourceType", "status", "uniqueId" ]
+      },
+      "Diff" : {
+        "type" : "object",
+        "properties" : {
+          "actual" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "diffKey" : {
+            "type" : "string"
+          },
+          "expected" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lineNo" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "actual", "diffKey", "expected", "lineNo" ]
       },
       "DoseAccepted" : {
         "type" : "object",
@@ -1700,6 +2214,120 @@
         },
         "required" : [ "cnesCode", "isActive", "isCurrent", "municipalityCode", "municipalityName", "stateAbbr", "validFrom", "validTo" ]
       },
+      "HourDoses" : {
+        "type" : "object",
+        "properties" : {
+          "doses" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "hour" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "doses", "hour" ]
+      },
+      "Ingest" : {
+        "type" : "object",
+        "properties" : {
+          "acceptedPerHour" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HourDoses"
+            }
+          },
+          "rejectsByReason" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RejectReason"
+            }
+          }
+        },
+        "required" : [ "acceptedPerHour", "rejectsByReason" ]
+      },
+      "Job" : {
+        "type" : "object",
+        "properties" : {
+          "dbtInvocationId" : {
+            "type" : [ "string", "null" ]
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "finishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "heartbeatAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "rejects" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "requestedBy" : {
+            "type" : "string"
+          },
+          "rows" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "runId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "startedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "jobId", "kind", "requestedAt", "requestedBy", "status" ]
+      },
+      "JobLogLine" : {
+        "type" : "object",
+        "properties" : {
+          "level" : {
+            "type" : "string"
+          },
+          "loggedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "seq" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "level", "loggedAt", "message", "seq" ]
+      },
+      "JobRequest" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind" ]
+      },
       "LowCoverage" : {
         "type" : "object",
         "properties" : {
@@ -1845,6 +2473,33 @@
         },
         "required" : [ "daily", "suppressed" ]
       },
+      "Reconciliation" : {
+        "type" : "object",
+        "properties" : {
+          "checks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Check"
+            }
+          },
+          "finishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "runId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "startedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "checks", "runId", "startedAt", "status" ]
+      },
       "Region" : {
         "type" : "object",
         "properties" : {
@@ -1862,6 +2517,23 @@
           }
         },
         "required" : [ "code", "level", "name" ]
+      },
+      "RejectReason" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "httpStatus" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "httpStatus", "reason" ]
       },
       "Run" : {
         "type" : "object",
@@ -1918,6 +2590,69 @@
           }
         },
         "required" : [ "label", "level" ]
+      },
+      "Source" : {
+        "type" : "object",
+        "properties" : {
+          "licenseNote" : {
+            "type" : "string"
+          },
+          "licenseStatus" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "publisher" : {
+            "type" : "string"
+          },
+          "retrievedAt" : {
+            "type" : "string"
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sha256" : {
+            "type" : "string"
+          },
+          "snapshotDate" : {
+            "type" : "string"
+          },
+          "sourceId" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "tableName" : {
+            "type" : [ "string", "null" ]
+          },
+          "verified" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "licenseNote", "licenseStatus", "path", "publisher", "retrievedAt", "rows", "sha256", "snapshotDate", "sourceId", "sourceUrl", "verified" ]
+      },
+      "Sources" : {
+        "type" : "object",
+        "properties" : {
+          "loadedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "runId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "sources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Source"
+            }
+          }
+        },
+        "required" : [ "sources" ]
       },
       "SseEmitter" : {
         "type" : "object",
