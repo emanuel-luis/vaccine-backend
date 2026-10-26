@@ -10,7 +10,7 @@ test('a professional is held to the Salvador scope', async ({ page }) => {
   await page.goto('/cobertura')
   await expect(page).toHaveURL(/\/cobertura\/BA\/2927408/)
   await expect(page.getByRole('navigation', { name: 'Navegação por região' }).getByRole('link')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Exportar CSV' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Exportar/ })).toHaveCount(0)
 
   await page.goto('/dados/execucoes')
   await expect(page).toHaveURL(/\/acesso-negado/)

@@ -4,6 +4,12 @@ import { useConfig } from '../config'
 
 export type ExportDataset = 'doses-daily' | 'coverage-municipality' | 'health-units'
 
+const LABEL: Record<ExportDataset, string> = {
+  'doses-daily': 'Exportar doses (CSV)',
+  'coverage-municipality': 'Exportar municípios (CSV)',
+  'health-units': 'Exportar unidades (CSV)',
+}
+
 /** CSV download with the current query params. Render it for gestor only (the API enforces it too). */
 export function ExportButton({ dataset, query }: { dataset: ExportDataset; query: Record<string, string | undefined> }) {
   const { apiBaseUrl } = useConfig()
@@ -34,7 +40,7 @@ export function ExportButton({ dataset, query }: { dataset: ExportDataset; query
   return (
     <>
       <button type="button" className="btn" onClick={() => void download()}>
-        Exportar CSV
+        {LABEL[dataset]}
       </button>
       {error && <span role="alert"> Não foi possível exportar.</span>}
     </>
