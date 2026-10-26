@@ -8,9 +8,9 @@ spring:
     username: vaccine
   flyway:
     enabled: true
-    # History lives in `ops`; migrations also own `raw`, `live` and `ops`. dbt owns `staging`,
+    # History lives in `ops`; migrations also own `raw`, `live`, `app` and `ops`. dbt owns `staging`,
     # `intermediate`, `marts` and `reference`. The API reads `marts`, `ops` and `live`, and writes
-    # only raw.live_dose, live.dose_daily and ops.ingest_reject (POST /api/v1/doses).
+    # only raw.live_dose, live.dose_daily and ops.ingest_reject (POST /api/v1/doses) and app.campaign.
     default-schema: ops
     schemas: ops
     create-schemas: true

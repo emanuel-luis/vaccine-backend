@@ -3,7 +3,7 @@
 A Kimball star schema in Postgres with a speed layer for live doses. Flyway owns the landing
 (`raw`), run-metadata (`ops`) and speed (`live`) schemas; dbt builds `staging` and `intermediate`
 views and the `marts` tables. The API reads `marts`, `ops` and `live`, and writes only
-`raw.live_dose`, `live.dose_daily` and `ops.ingest_reject`. This file is the contract between the
+`raw.live_dose`, `live.dose_daily`, `ops.ingest_reject` and `app.campaign`. This file is the contract between the
 dbt project and the API: change a column here and in both places, in the same PR. The design of
 the speed layer is in [WEB_PLATFORM_PLAN.md](WEB_PLATFORM_PLAN.md).
 
@@ -220,6 +220,11 @@ the next dbt run. Migrations `V6` and `V7` own the objects.
   date), `doses`, `updated_at`. `administered_on` is the local date (America/Sao_Paulo) of
   `administered_at`, the rule of `stg_live__doses`.
 - `ops.ingest_reject`: one row per refused POST (4xx), with a reason code and no payload.
+- `app.campaign` (Flyway `V8`, the only table of schema `app`; the API is its only writer): `campaign_id` uuid PK,
+  `name` (1-120 characters), `vaccine_code`, `dose_label` (null = every dose), `region_scope` (`BR`, `UF:XX`
+  or `MUN:1234567`, the syntax of the token claim), `starts_on`, `ends_on` (`>= starts_on`), `target_doses` (`> 0`),
+  `created_by`, `created_at`, `updated_at`, `version` (optimistic lock, starts at 1). Indexes on
+  `region_scope` and `(starts_on, ends_on)`.
 - `ops.live_generation` (the open generation G, one row) and `ops.live_generation_close` (one row
   per closed generation, with the dbt invocation id).
 
@@ -288,7 +293,13 @@ Without a token every endpoint except health, `/v3/api-docs` and Swagger UI answ
 | `GET /api/v1/dashboard/map` | P G A | S (state level: S>=UF) | same merge per state or municipality of `marts.dim_municipality`; coverage divides by `marts.mart_coverage_target_by_municipality.expected_population` (state = sum), numerator limited to `age_band_years <= coverage_target_age_years` |
 | `GET /api/v1/dashboard/health-units` | P G A | S | `marts.dim_health_unit` (current, active) of one municipality left-joined to the same merge by `cnes_code` |
 | `GET /api/v1/reference/regions` | P G A | S | `marts.dim_municipality` without the Unknown member: states, or the municipalities of `state` |
-| `GET /api/v1/reference/vaccines` | P G A | none | `marts.dim_vaccine` without the Unknown member |
+| `GET /api/v1/reference/vaccines` | P G A | none | `marts.dim_vaccine` without the Unknown member; `coverageGoalPct` is null unless the dose is a coverage indicator |
+| `GET /api/v1/alerts/low-coverage` | P G A | S (state level: S>=UF) | the map's coverage for every indicator dose (or `vaccine`/`dose`) against `marts.dim_vaccine.coverage_goal_pct`; areas below the goal, suppressed and no-population cells left out, gap descending, at most 200 |
+| `GET /api/v1/campaigns[?active=true]` | P G A | S (campaign region inside the scope) | `app.campaign` |
+| `POST /api/v1/campaigns` | G | S (body region inside the scope: 403; unknown vaccine or dose, bad dates or target: 422) | writes `app.campaign` (`created_by` = `preferred_username`, else `sub`); 201 with `ETag` and `Location`; validates against `marts.dim_vaccine` |
+| `GET /api/v1/campaigns/{id}` | P G A | S (outside the scope: 404) | `app.campaign` + progress from the merged doses of the campaign's vaccine, dose and region from `starts_on` to `min(ends_on, today)`; municipality regions suppress `dosesToDate` and `daily` points of 1 to 4; `ETag` |
+| `PUT /api/v1/campaigns/{id}` | G | S | updates `app.campaign` when `If-Match` equals the version (428 missing, 412 stale), bumps `version` |
+| `DELETE /api/v1/campaigns/{id}` | G | S | deletes the row when `If-Match` equals the version (428 missing, 412 stale); 204 |
 | `GET /api/v1/exports/{doses-daily,coverage-municipality,health-units}` | G | S | the same queries as the dashboard endpoints, as CSV (decision 53) |
 | `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event`; filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
 | `GET /api/v1/doses/by-state-month` | P G A | S>=UF | `marts.mart_doses_by_state_month` |

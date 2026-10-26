@@ -12,6 +12,220 @@
     "bearer-jwt" : [ ]
   } ],
   "paths" : {
+    "/api/v1/alerts/low-coverage" : {
+      "get" : {
+        "operationId" : "lowCoverage",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "level",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "state|municipality"
+          }
+        }, {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z]{2}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "year",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2030,
+            "minimum" : 2015
+          }
+        }, {
+          "in" : "query",
+          "name" : "vaccine",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9_]{2,20}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dose",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_]{1,10}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "region",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseLowCoverage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "alerts-controller" ]
+      }
+    },
+    "/api/v1/campaigns" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "active",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCampaign"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CampaignRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemCampaign"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-controller" ]
+      }
+    },
+    "/api/v1/campaigns/{id}" : {
+      "delete" : {
+        "operationId" : "delete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-controller" ]
+      },
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemCampaignDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CampaignRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiItemCampaign"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-controller" ]
+      }
+    },
     "/api/v1/coverage" : {
       "get" : {
         "operationId" : "coverage",
@@ -870,6 +1084,30 @@
         },
         "required" : [ "suppressed" ]
       },
+      "ApiItemCampaign" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/Campaign"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiItemCampaignDetail" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CampaignDetail"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
       "ApiItemDoseAccepted" : {
         "type" : "object",
         "properties" : {
@@ -913,6 +1151,21 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/AgeBandDoses"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseCampaign" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Campaign"
             }
           },
           "meta" : {
@@ -973,6 +1226,21 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/HealthUnitVersion"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseLowCoverage" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LowCoverage"
             }
           },
           "meta" : {
@@ -1085,6 +1353,154 @@
           }
         },
         "required" : [ "data", "meta" ]
+      },
+      "Campaign" : {
+        "type" : "object",
+        "properties" : {
+          "campaignId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "doseLabel" : {
+            "type" : [ "string", "null" ]
+          },
+          "endsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "regionScope" : {
+            "type" : "string"
+          },
+          "startsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "targetDoses" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "campaignId", "createdAt", "createdBy", "endsOn", "name", "regionScope", "startsOn", "targetDoses", "updatedAt", "vaccineCode", "version" ]
+      },
+      "CampaignDetail" : {
+        "type" : "object",
+        "properties" : {
+          "campaignId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "doseLabel" : {
+            "type" : [ "string", "null" ]
+          },
+          "endsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "progress" : {
+            "$ref" : "#/components/schemas/Progress"
+          },
+          "regionScope" : {
+            "type" : "string"
+          },
+          "startsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "targetDoses" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "campaignId", "createdAt", "createdBy", "endsOn", "name", "progress", "regionScope", "startsOn", "targetDoses", "updatedAt", "vaccineCode", "version" ]
+      },
+      "CampaignRequest" : {
+        "type" : "object",
+        "properties" : {
+          "doseLabel" : {
+            "type" : [ "string", "null" ]
+          },
+          "endsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "regionScope" : {
+            "type" : "string"
+          },
+          "startsOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "targetDoses" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "endsOn", "name", "regionScope", "startsOn", "targetDoses", "vaccineCode" ]
+      },
+      "DailyPoint" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "doses" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "date", "suppressed" ]
       },
       "DoseAccepted" : {
         "type" : "object",
@@ -1284,6 +1700,46 @@
         },
         "required" : [ "cnesCode", "isActive", "isCurrent", "municipalityCode", "municipalityName", "stateAbbr", "validFrom", "validTo" ]
       },
+      "LowCoverage" : {
+        "type" : "object",
+        "properties" : {
+          "abbr" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "coveragePct" : {
+            "type" : "number"
+          },
+          "denominator" : {
+            "type" : "number"
+          },
+          "doseLabel" : {
+            "type" : "string"
+          },
+          "gapPp" : {
+            "type" : "number"
+          },
+          "goalPct" : {
+            "type" : "number"
+          },
+          "level" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "numerator" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "coveragePct", "denominator", "doseLabel", "gapPp", "goalPct", "level", "name", "numerator", "vaccineCode" ]
+      },
       "MapArea" : {
         "type" : "object",
         "properties" : {
@@ -1366,6 +1822,28 @@
           }
         },
         "required" : [ "count", "layer", "source", "suppressedCells", "synthetic" ]
+      },
+      "Progress" : {
+        "type" : "object",
+        "properties" : {
+          "daily" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DailyPoint"
+            }
+          },
+          "dosesToDate" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "pct" : {
+            "type" : [ "number", "null" ]
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "daily", "suppressed" ]
       },
       "Region" : {
         "type" : "object",
@@ -1575,6 +2053,9 @@
       "Vaccine" : {
         "type" : "object",
         "properties" : {
+          "coverageGoalPct" : {
+            "type" : [ "number", "null" ]
+          },
           "doseLabel" : {
             "type" : "string"
           },

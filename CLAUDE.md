@@ -26,7 +26,7 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 ## Repo map
 - `src/main/java/io/github/emanuelluis/vaccine/`: `analytics/` (doses, coverage), `units/`
   (SCD2 history), `runs/` (ops runs), `ingest/` (POST /api/v1/doses), `security/` (resource server, roles, `ScopeGuard`, `/me`), `live/` (LISTEN hub, SSE
-  stream), `dashboard/` (merged batch + live queries, `Suppression`), `reference/` (region and vaccine lists), `exports/` (CSV, gestor only), `web/` (envelope, problem details).
+  stream), `dashboard/` (merged batch + live queries, `Suppression`), `reference/` (region and vaccine lists), `alerts/` (low coverage vs goals), `campaigns/` (CRUD with ETag/If-Match, progress), `exports/` (CSV, gestor only), `web/` (envelope, problem details).
   `JdbcClient` + records, no JPA.
 - `src/main/resources/db/migration/`: Flyway migrations (history in schema `ops`)
 - `elt/src/vaccine_elt/`: `fetch.py` + `sources/` (public endpoints -> snapshots), `manifest.py`,
@@ -55,12 +55,13 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   rows_loaded + rows_rejected` in `ops.load_run_table`. Never read the wall clock in data paths
   (run metadata timestamps only), except ingest validation, `received_at` and the dashboard's
   "today".
-- dbt owns `staging`, `intermediate`, `marts`, `reference`; Flyway owns `raw`, `ops`, `live`. dbt
+- dbt owns `staging`, `intermediate`, `marts`, `reference`; Flyway owns `raw`, `ops`, `live`, `app`. dbt
   calls only `ops.close_live_generation()` (run hooks) and reads `raw.live_dose` and `ops`.
   Mart columns follow `docs/data-model.md`; change the dbt contract, the API records/queries and
   `src/test/resources/fixtures/marts.sql` in the same PR.
 - The API reads `marts`, `ops` and `live`. It writes only `raw.live_dose` + `live.dose_daily` (one
-  transaction per dose, generation protocol) and `ops.ingest_reject`. A missing mart answers 503,
+  transaction per dose, generation protocol), `ops.ingest_reject` and `app.campaign` (gestor campaigns,
+  optimistic locking on `version`). A missing mart answers 503,
   never 500. No endpoint returns an individual dose.
 - Every data endpoint applies the caller's region scope (token claim `region_scope`) through
   `ScopeGuard` and `RegionFilter`; repositories take no raw region parameter. URL roles live in
