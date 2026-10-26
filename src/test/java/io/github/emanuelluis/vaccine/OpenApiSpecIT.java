@@ -76,6 +76,15 @@ class OpenApiSpecIT {
                 .andExpect(jsonPath(schemas + "Me.required", not(hasItem("scope"))))
                 .andExpect(jsonPath(schemas + "Me.properties.scope.oneOf[1].type", is("null")))
                 .andExpect(jsonPath(schemas + "DoseRequest.required", not(hasItem("lotNumber"))))
-                .andExpect(jsonPath(schemas + "ApiItemMe.required", containsInAnyOrder("data", "meta")));
+                .andExpect(jsonPath(schemas + "ApiItemMe.required", containsInAnyOrder("data", "meta")))
+                .andExpect(jsonPath(schemas + "Campaign.required", not(hasItem("doseLabel"))))
+                .andExpect(jsonPath(schemas + "Campaign.required", hasItem("version")))
+                .andExpect(jsonPath(schemas + "Campaign.properties.doseLabel.type", contains("string", "null")))
+                .andExpect(jsonPath(schemas + "CampaignRequest.required", not(hasItem("doseLabel"))))
+                .andExpect(jsonPath(schemas + "CampaignRequest.required", hasItem("targetDoses")))
+                .andExpect(jsonPath(schemas + "Progress.required", containsInAnyOrder("suppressed", "daily")))
+                .andExpect(jsonPath(schemas + "LowCoverage.required", not(hasItem("abbr"))))
+                .andExpect(jsonPath(schemas + "LowCoverage.required", hasItem("gapPp")))
+                .andExpect(jsonPath(schemas + "Vaccine.required", not(hasItem("coverageGoalPct"))));
     }
 }

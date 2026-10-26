@@ -3,6 +3,7 @@ package io.github.emanuelluis.vaccine.dashboard;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.AgeBandDoses;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.DosesDailyRow;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.HealthUnitDoses;
+import io.github.emanuelluis.vaccine.dashboard.DashboardRows.LowCoverage;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.MapArea;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.Rows;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.VaccineDoses;
@@ -12,6 +13,8 @@ import io.github.emanuelluis.vaccine.web.InvalidRequestException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -57,7 +60,28 @@ public class MergedDosesRepository {
             String dose,
             Integer ageBand) {}
 
+    /**
+     * Low-coverage scan: states or municipalities of {@code areas}, one coverage per indicator dose (or
+     * only {@code vaccine}/{@code dose}) in {@code from..to} (the year), like the coverage map.
+     */
+    public record AlertRequest(
+            boolean stateLevel, LocalDate from, LocalDate to, RegionFilter areas, String vaccine, String dose) {}
+
+    /** One day of merged doses; {@code batchGeneration} comes from the same statement. */
+    public record DayDoses(LocalDate day, long doses, long batchGeneration) {}
+
     // Raw statement rows; each carries the generation so an answer needs one statement only.
+    record AlertRow(
+            String code,
+            String abbr,
+            String name,
+            String vaccineCode,
+            String doseLabel,
+            long doses,
+            BigDecimal expected,
+            BigDecimal goal,
+            long batchGeneration) {}
+
     record TimeseriesRow(LocalDate periodStart, long doses, long batchGeneration) {}
 
     record VaccineRow(String vaccineCode, String vaccineName, String doseLabel, long doses, long batchGeneration) {}
@@ -293,6 +317,113 @@ public class MergedDosesRepository {
 
     private static BigDecimal tenths(BigDecimal v) {
         return v == null ? null : v.setScale(1, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Areas whose coverage is below the goal of an indicator dose, widest gap first, at most {@code limit}.
+     * Suppressed cells (municipality numerators of 1 to 4) and areas without population are left out.
+     * The coverage is the map's: merged doses of the year with {@code age_band_years <= target age}
+     * over the expected population, in one statement. The statement keeps every area under the exact
+     * goal; the rounded comparison and the ordering happen here.
+     */
+    public Rows<LowCoverage> lowCoverage(AlertRequest q, int limit) {
+        String areas = q.stateLevel() ? """
+                select lpad(cast(min(state_code) as text), 2, '0') as code, cast(state_abbr as text) as abbr,
+                       min(state_name) as name, cast(state_abbr as text) as k
+                from marts.dim_municipality
+                where municipality_code <> 0 and %s
+                group by state_abbr
+                """ : """
+                select lpad(cast(municipality_code as text), 7, '0') as code, cast(null as text) as abbr,
+                       municipality_name as name, cast(municipality_code as text) as k
+                from marts.dim_municipality
+                where municipality_code <> 0 and %s
+                """;
+        String key = q.stateLevel() ? "cast(state_abbr as text)" : "cast(municipality_code as text)";
+        String sql = MERGED + ", area as (" + areas.formatted(AREA_FILTER) + """
+                ), ind as (
+                    select vaccine_code, dose_label, coverage_target_age_years as max_age,
+                           coverage_goal_pct as goal
+                    from marts.dim_vaccine
+                    where is_coverage_indicator and coverage_target_age_years is not null
+                      and coverage_goal_pct is not null
+                      and (cast(:vaccine as text) is null or vaccine_code = cast(:vaccine as text))
+                      and (cast(:dose as text) is null or dose_label = cast(:dose as text))
+                ), n as (
+                    select %1$s as k, m.vaccine_code, m.dose_label, sum(m.doses) as doses
+                    from merged m
+                    join ind i on i.vaccine_code = m.vaccine_code and i.dose_label = m.dose_label
+                    where m.day between :from and :to and m.age_band_years <= i.max_age
+                    group by 1, 2, 3
+                ), d as (
+                    select %1$s as k, vaccine_code, dose_label, sum(expected_population) as expected
+                    from marts.mart_coverage_target_by_municipality
+                    group by 1, 2, 3
+                )
+                select a.code, a.abbr, a.name, i.vaccine_code, i.dose_label, coalesce(n.doses, 0) as doses,
+                       d.expected, i.goal, (select g from w) as batch_generation
+                from area a
+                cross join ind i
+                join d on d.k = a.k and d.vaccine_code = i.vaccine_code and d.dose_label = i.dose_label
+                left join n on n.k = a.k and n.vaccine_code = i.vaccine_code and n.dose_label = i.dose_label
+                where d.expected > 0 and coalesce(n.doses, 0) * 100 < i.goal * d.expected
+                """.formatted(key);
+        List<AlertRow> rows = bind(jdbc.sql(sql), new Filters(q.areas(), q.vaccine(), q.dose(), null))
+                .param("from", q.from())
+                .param("to", q.to())
+                .query(AlertRow.class)
+                .list();
+        boolean fine = !q.stateLevel();
+        String level = q.stateLevel() ? "state" : "municipality";
+        int hidden = 0;
+        List<LowCoverage> alerts = new ArrayList<>();
+        for (AlertRow r : rows) {
+            if (Suppression.applies(r.doses(), fine)) {
+                hidden++;
+                continue;
+            }
+            BigDecimal pct = BigDecimal.valueOf(r.doses())
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(r.expected(), 1, RoundingMode.HALF_UP);
+            if (pct.compareTo(r.goal()) >= 0) {
+                continue;
+            }
+            alerts.add(new LowCoverage(
+                    level,
+                    r.code(),
+                    r.abbr(),
+                    r.name(),
+                    r.vaccineCode(),
+                    r.doseLabel(),
+                    pct,
+                    r.goal(),
+                    r.goal().subtract(pct).setScale(1, RoundingMode.HALF_UP),
+                    r.doses(),
+                    tenths(r.expected())));
+        }
+        alerts.sort(Comparator.comparing(LowCoverage::gapPp, Comparator.reverseOrder())
+                .thenComparing(LowCoverage::code)
+                .thenComparing(LowCoverage::vaccineCode)
+                .thenComparing(LowCoverage::doseLabel));
+        return new Rows<>(
+                generation(rows.isEmpty() ? null : rows.getFirst().batchGeneration()),
+                List.copyOf(alerts.size() > limit ? alerts.subList(0, limit) : alerts),
+                hidden);
+    }
+
+    /** Merged doses per day in {@code from..to} for the filters, days without doses omitted. */
+    public List<DayDoses> dailyDoses(LocalDate from, LocalDate to, Filters f) {
+        return bind(jdbc.sql(MERGED + """
+                        select day, sum(doses) as doses, (select g from w) as batch_generation
+                        from merged
+                        where day between :from and :to
+                        group by day
+                        order by day
+                        """), f)
+                .param("from", from)
+                .param("to", to)
+                .query(DayDoses.class)
+                .list();
     }
 
     /** Target age of an indicator dose; 400 when the dose is not a coverage indicator. */

@@ -39,9 +39,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
 
     static final int MAX_DAYS = 1096;
-    static final ZoneId LOCAL_ZONE = ZoneId.of("America/Sao_Paulo");
-    static final String VACCINE = "[A-Z0-9_]{2,20}";
-    static final String DOSE = "[A-Za-z0-9_]{1,10}";
+    public static final ZoneId LOCAL_ZONE = ZoneId.of("America/Sao_Paulo");
+    public static final String VACCINE = "[A-Z0-9_]{2,20}";
+    public static final String DOSE = "[A-Za-z0-9_]{1,10}";
 
     /** Data of the summary endpoint; a suppressed count is null and named in {@code suppressedFields}. */
     public record SummaryData(

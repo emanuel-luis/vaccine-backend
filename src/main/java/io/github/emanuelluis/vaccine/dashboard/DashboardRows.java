@@ -49,6 +49,23 @@ public final class DashboardRows {
             @Nullable String reason)
             implements Cell {}
 
+    /**
+     * An area below the dose's coverage goal. {@code coveragePct} and {@code gapPp} (goal minus coverage,
+     * percentage points) have one decimal; {@code denominator} is the expected population.
+     */
+    public record LowCoverage(
+            String level,
+            String code,
+            @Nullable String abbr,
+            String name,
+            String vaccineCode,
+            String doseLabel,
+            BigDecimal coveragePct,
+            BigDecimal goalPct,
+            BigDecimal gapPp,
+            long numerator,
+            BigDecimal denominator) {}
+
     public record HealthUnitDoses(
             String cnesCode,
             String unitName,
