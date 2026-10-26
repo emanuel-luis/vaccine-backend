@@ -3,6 +3,7 @@ import { GridComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useEffect, useRef, useState } from 'react'
+import { fmtNumber } from '../lib/format'
 
 echarts.use([BarChart, LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 
@@ -17,14 +18,14 @@ export function themeFromTokens(): Record<string, unknown> {
   const text = token('--text', '#17202e')
   const muted = token('--muted', '#4a5568')
   const border = token('--border', '#b8c1ce')
-  const axis = { axisLine: { lineStyle: { color: border } }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: border, opacity: 0.5 } } }
+  const axis = { axisLine: { lineStyle: { color: border } }, axisLabel: { color: muted, formatter: fmtNumber }, splitLine: { lineStyle: { color: border, opacity: 0.5 } } }
   return {
     color: [token('--primary', '#0b5cad')],
     backgroundColor: 'transparent',
     textStyle: { color: text },
     categoryAxis: axis,
     valueAxis: axis,
-    tooltip: { backgroundColor: token('--surface', '#fff'), borderColor: border, textStyle: { color: text } },
+    tooltip: { valueFormatter: fmtNumber, backgroundColor: token('--surface', '#fff'), borderColor: border, textStyle: { color: text } },
   }
 }
 
