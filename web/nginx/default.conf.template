@@ -11,7 +11,7 @@ server {
     gzip on;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' ${OIDC_ORIGIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self' ${OIDC_ORIGIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
@@ -54,6 +54,13 @@ server {
     # Hashed build output.
     location /assets/ {
         expires 1y;
+        try_files $uri =404;
+    }
+
+    # Map geometries copied at build time; served as JSON so gzip applies.
+    location /geo/ {
+        types { application/json geojson; }
+        expires 1d;
         try_files $uri =404;
     }
 

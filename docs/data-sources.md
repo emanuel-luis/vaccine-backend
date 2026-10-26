@@ -20,10 +20,37 @@ Refresh with `uv run --project elt vaccine-elt fetch` (network; never run in CI)
 rewrites the snapshots and the manifest deterministically: the same upstream data gives the same
 bytes.
 
+## Geometries
+
+Map polygons for the coverage choropleth, in [`data/sources/geo/`](../data/sources/geo/): one file
+for the 27 states and one per state with its municipalities (28 files). Each has a manifest entry
+with `table: null` (`load-reference` skips it, `verify` still checks its sha256) and
+`license_status: to_be_confirmed`.
+
+| Manifest id | Publisher | Endpoint | Features |
+| --- | --- | --- | --- |
+| `ibge_malha_uf` | IBGE, Malhas territoriais API v3 ([docs](https://servicodados.ibge.gov.br/api/docs/malhas?versao=3)) | `https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?intrarregiao=UF&qualidade=minima&formato=application/vnd.geo+json` | 27 |
+| `ibge_malha_municipios_<uf>` (27 files) | same | `https://servicodados.ibge.gov.br/api/v3/malhas/estados/<2-digit state code>?intrarregiao=municipio&qualidade=minima&formato=application/vnd.geo+json` | 5,570 in total |
+
+- Quality: `minima` (simplified polygons, enough for a choropleth; not for measuring areas).
+- Transformation (`vaccine-elt fetch --only geo`): only `codarea` (string: 2-digit state code or
+  7-digit municipality code) and the geometry are kept; features sorted by `codarea`; coordinates
+  rounded to 4 decimals (about 11 m); compact JSON with sorted keys; gzip with a zero mtime.
+- Sizes (budget: 2 MB gzipped in total, 600 KB uncompressed per state file): 845,510 bytes gzipped
+  for the 28 files; the largest state file is Minas Gerais at 455,013 bytes uncompressed; the state
+  mesh is 28,049 bytes gzipped.
+- Codes: every municipality polygon matches a municipality of `ibge_municipalities`, except that
+  Boa Esperança do Norte (MT, `5101837`, created after Censo 2022) has no polygon in the IBGE mesh
+  yet and no census rows. The two Rio Grande do Sul lagoons (`4300001`, `4300002`) that IBGE
+  meshes may carry as extra features are not in the current snapshot; the contract test allows them.
+- Attribution: IBGE, Malhas territoriais (API de malhas v3, qualidade mínima).
+- License: to be confirmed, the same status as the other IBGE files (see below).
+
 ## Citations
 
 - IBGE, API de Localidades (municípios, `view=nivelado`).
 - IBGE, Censo Demográfico 2022, SIDRA tabela 9514 (população residente, por sexo e idade).
+- IBGE, Malhas territoriais (API de malhas v3, qualidade mínima).
 - Ministério da Saúde, CNES - Cadastro Nacional de Estabelecimentos de Saúde, extração de dados
   abertos de 2026-10-24.
 - Ministério da Saúde, Unidades Básicas de Saúde (UBS), dados abertos (2023 snapshot).
