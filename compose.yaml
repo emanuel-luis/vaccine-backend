@@ -90,5 +90,31 @@ services:
       start_period: 10s
       retries: 10
 
+  simulator:
+    build:
+      context: .
+      dockerfile: elt/Dockerfile
+    command: ["simulate"]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      API_URL: http://api:8080
+      TOKEN_URL: http://keycloak:8080/realms/vaccine/protocol/openid-connect/token
+      SIMULATOR_CLIENT_ID: vaccine-simulator
+      SIMULATOR_CLIENT_SECRET: ${SIMULATOR_CLIENT_SECRET:?set SIMULATOR_CLIENT_SECRET in .env (copy .env.example)}
+      SIMULATOR_RATE_PER_SECOND: ${SIMULATOR_RATE_PER_SECOND:-2}
+      SIMULATOR_INVALID_RATIO: ${SIMULATOR_INVALID_RATIO:-0.01}
+    healthcheck:
+      # The loop touches /tmp/simulator-alive at least every 10 s; unhealthy when older than 30 s.
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(time.time() - os.stat('/tmp/simulator-alive').st_mtime > 30)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
 volumes:
   pgdata:
