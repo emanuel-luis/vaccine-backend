@@ -46,7 +46,7 @@ class ApplicationIT {
     void flywayAppliedEveryMigrationAndDroppedTheLegacySchema() {
         Integer applied = jdbc.queryForObject(
                 "SELECT count(*) FROM ops.flyway_schema_history WHERE success AND version IS NOT NULL", Integer.class);
-        assertThat(applied).isEqualTo(7);
+        assertThat(applied).isEqualTo(8);
         assertThat(jdbc.queryForObject("SELECT to_regclass('public.unidade_basica') IS NULL", Boolean.class))
                 .isTrue();
         assertThat(jdbc.queryForObject("SELECT to_regclass('raw.vaccination_event') IS NOT NULL", Boolean.class))
