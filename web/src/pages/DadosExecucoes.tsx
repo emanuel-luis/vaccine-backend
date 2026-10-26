@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { useCreateJob, useJobs } from '../api/queries'
@@ -9,7 +10,15 @@ import { fmtCount, fmtDateTime, fmtDuration } from '../lib/formatTime'
 export function DadosExecucoes() {
   const jobs = useJobs()
   const create = useCreateJob()
-  const busy = create.isPending || (jobs.data ?? []).some((j) => isActive(j.status))
+  const active = (jobs.data ?? []).some((j) => isActive(j.status))
+  const busy = create.isPending || active
+  const { reset } = create
+  // The 409 message is stale once the active job has finished.
+  const wasActive = useRef(false)
+  useEffect(() => {
+    if (wasActive.current && !active) reset()
+    wasActive.current = active
+  }, [active, reset])
 
   const launchError =
     create.error instanceof ApiError && create.error.status === 409

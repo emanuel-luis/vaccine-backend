@@ -11,8 +11,8 @@ import { useJobLog } from '../live/useJobLog'
 const LEVELS: Record<string, string> = { info: 'INFO', warn: 'AVISO', error: 'ERRO' }
 const time = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium' })
 
-function JobLog({ jobId }: { jobId: string }) {
-  const { lines, loaded, failed, retry } = useJobLog(jobId)
+function JobLog({ jobId, status }: { jobId: string; status?: string }) {
+  const { lines, loaded, failed, syncing, retry } = useJobLog(jobId)
   const [paused, setPaused] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -30,7 +30,11 @@ function JobLog({ jobId }: { jobId: string }) {
         </button>
       </div>
       {failed && <StatePanel state="error" message="Não foi possível carregar o registro." onRetry={() => void retry()} />}
-      <div ref={box} className="job-log" role="log" aria-live="polite" aria-label="Registro da execução" tabIndex={0}>
+      {/* Only status changes are announced; the log itself stays quiet (hundreds of lines). */}
+      <p role="status" className="sr-only">
+        {status && `Situação da execução: ${jobStatus(status).label}`}
+      </p>
+      <div ref={box} className="job-log" role="log" aria-live="off" aria-busy={syncing} aria-label="Registro da execução" tabIndex={0}>
         {loaded && !failed && lines.length === 0 && <p className="muted">Ainda não há linhas de registro.</p>}
         {lines.map((l) => (
           <div key={l.seq} className={`log-line log-${l.level}`}>
@@ -91,7 +95,7 @@ export function DadosExecucaoDetalhe() {
           )}
         </>
       )}
-      {!(q.error instanceof ApiError && q.error.status === 404) && <JobLog key={jobId} jobId={jobId} />}
+      {!(q.error instanceof ApiError && q.error.status === 404) && <JobLog key={jobId} jobId={jobId} status={j?.status} />}
     </>
   )
 }

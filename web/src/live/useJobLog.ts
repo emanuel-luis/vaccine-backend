@@ -10,10 +10,13 @@ export interface LogLine {
 }
 
 const PAGE = 1000
+// The worker truncates SSE messages to 500 chars when the pg_notify payload is too large.
+const TRUNCATED = 500
 
 /**
  * Log of one job: loaded with GET .../log?afterSeq= on mount, on `ready` (reconnect) and when the
- * stream skips a seq; SSE lines are appended when they are the next seq and ignored when already seen.
+ * stream skips a seq or sends a possibly truncated line; SSE lines are appended when they are the next seq
+ * and ignored when already seen. A status-change event for this job also resyncs (final lines after an outage).
  * Mount it with key={jobId}: the state belongs to one job.
  */
 export function useJobLog(jobId: string) {
@@ -22,6 +25,7 @@ export function useJobLog(jobId: string) {
   const [lines, setLines] = useState<LogLine[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const last = useRef(0)
   const busy = useRef(false)
   const again = useRef(false)
@@ -45,6 +49,7 @@ export function useJobLog(jobId: string) {
       return
     }
     busy.current = true
+    setSyncing(true)
     try {
       do {
         again.current = false
@@ -58,6 +63,7 @@ export function useJobLog(jobId: string) {
       setFailed(true)
     } finally {
       busy.current = false
+      setSyncing(false)
       setLoaded(true)
     }
   }, [jobId, append])
@@ -66,12 +72,16 @@ export function useJobLog(jobId: string) {
     queueMicrotask(() => void sync())
     return subscribe((e) => {
       if (e.type === 'ready') return void sync()
-      if (e.jobId !== jobId || e.seq === undefined || e.seq <= last.current) return
-      if (e.seq === last.current + 1)
+      if (e.jobId !== jobId) return
+      if (e.seq === undefined) return void sync() // status change: pick up the final lines
+      if (e.seq <= last.current) return
+      // The next seq with a full message is appended; a gap or a truncated line comes from the API,
+      // so the stored text and the server loggedAt win.
+      if (e.seq === last.current + 1 && (e.message ?? '').length < TRUNCATED)
         append([{ seq: e.seq, loggedAt: new Date().toISOString(), level: e.level ?? 'info', message: e.message ?? '' }])
-      else void sync() // a gap: the missing lines come from the API
+      else void sync()
     })
   }, [jobId, subscribe, sync, append])
 
-  return { lines, loaded, failed, retry: sync }
+  return { lines, loaded, failed, syncing, retry: sync }
 }
