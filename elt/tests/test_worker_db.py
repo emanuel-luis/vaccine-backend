@@ -73,14 +73,46 @@ def test_claim_skips_a_job_locked_by_another_worker(
     assert Worker(Path("."), worker_id="w2").claim(conn) == (job_id, "reconcile")
 
 
-def test_restart_marks_running_jobs_failed(conn: psycopg.Connection[Any]) -> None:
+def test_restart_marks_the_jobs_of_the_same_worker_failed(conn: psycopg.Connection[Any]) -> None:
     job_id = queue(conn)
-    Worker(Path("."), worker_id="old").claim(conn)
+    Worker(Path("."), worker_id="w").claim(conn)
 
-    Worker(Path("."), worker_id="new").recover(conn)
+    Worker(Path("."), worker_id="w").recover(conn)
 
     assert job_row(conn, job_id)[:2] == ("failed", "worker restarted")
     queue(conn)  # the single-active slot is free again
+
+
+def test_recover_leaves_a_live_worker_job_and_fails_a_stale_one(
+    conn: psycopg.Connection[Any],
+) -> None:
+    job_id = queue(conn)
+    Worker(Path("."), worker_id="other").claim(conn)
+
+    Worker(Path("."), worker_id="mine").recover(conn)
+    assert job_row(conn, job_id)[0] == "running"  # fresh heartbeat: still owned
+
+    conn.execute(
+        "UPDATE ops.job SET heartbeat_at = now() - interval '1 minute' WHERE job_id = %s",
+        (job_id,),
+    )
+    Worker(Path("."), worker_id="mine").recover(conn)
+    assert job_row(conn, job_id)[:2] == ("failed", "worker lost")
+
+
+def test_execute_cannot_overwrite_a_job_that_was_recovered(
+    conn: psycopg.Connection[Any], dsn: str
+) -> None:
+    job_id = queue(conn)
+    owner = Worker(Path("."), worker_id="owner")
+    owner.claim(conn)
+    conn.execute("UPDATE ops.job SET heartbeat_at = now() - interval '1 minute'")
+    Worker(Path("."), worker_id="other").recover(conn)
+
+    with psycopg.connect(dsn, autocommit=True) as log_conn:
+        owner.execute(conn, log_conn, job_id, "unknown-kind")
+
+    assert job_row(conn, job_id)[:2] == ("failed", "worker lost")
 
 
 def test_record_dbt_results_is_idempotent_and_links_the_generation(
@@ -137,3 +169,4 @@ def test_load_reference_records_every_manifest_entry(
     assert [r[0] for r in rows] == sorted(s["id"] for s in manifest["sources"])
     assert all(r[2] == "to_be_confirmed" and r[3] for r in rows)
     assert {r[0]: r[1] for r in rows}["census"] == "raw.ibge_census_population"
+    assert {r[0]: r[1] for r in rows}["ibge_malha_test"] is None
