@@ -41,7 +41,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
-function CampaignForm({ campaign }: { campaign?: Campaign }) {
+function CampaignForm({ campaign, onReload }: { campaign?: Campaign; onReload?: () => Promise<void> }) {
   const navigate = useNavigate()
   const { scope } = useSession()
   const vaccines = useVaccines().data ?? []
@@ -55,6 +55,7 @@ function CampaignForm({ campaign }: { campaign?: Campaign }) {
   const [values, setValues] = useState<CampaignValues>(() => (campaign ? fromCampaign(campaign) : EMPTY))
   const [errors, setErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string>()
+  const [reloading, setReloading] = useState(false)
 
   const set = (k: keyof CampaignValues, v: string) => setValues((s) => ({ ...s, [k]: v }))
 
@@ -151,6 +152,21 @@ function CampaignForm({ campaign }: { campaign?: Campaign }) {
             {formError}
           </p>
         )}
+        {formError === STALE_MESSAGE && onReload && (
+          <p>
+            <button
+              type="button"
+              className="btn"
+              disabled={reloading}
+              onClick={() => {
+                setReloading(true)
+                void onReload().finally(() => setReloading(false))
+              }}
+            >
+              Recarregar
+            </button>
+          </p>
+        )}
         <p className="actions">
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             Salvar
@@ -171,7 +187,10 @@ export function CampanhaNova() {
 export function CampanhaEditar() {
   const { id = '' } = useParams()
   const q = useCampaignForEdit(id)
-  if (q.isPending) return <StatePanel state="loading" />
+  // Bumped after a reload so the form remounts with the fresh values and version.
+  const [generation, setGeneration] = useState(0)
+  // Anything cached from an earlier visit is not good enough: wait for the fetch made after mount.
+  if (q.isPending || !q.isFetchedAfterMount) return <StatePanel state="loading" />
   if (q.isError) {
     const notFound = q.error instanceof ApiError && q.error.status === 404
     return (
@@ -183,5 +202,15 @@ export function CampanhaEditar() {
       />
     )
   }
-  return <CampaignForm campaign={q.data} />
+  return (
+    <CampaignForm
+      key={generation}
+      campaign={q.data}
+      onReload={() =>
+        q.refetch().then((r) => {
+          if (r.isSuccess) setGeneration((g) => g + 1)
+        })
+      }
+    />
+  )
 }

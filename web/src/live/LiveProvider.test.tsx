@@ -127,6 +127,34 @@ describe('LiveProvider', () => {
     expect(screen.getByTestId('doses').textContent).toBe('9')
   })
 
+  it('decays the ticker to 0 when doses stop arriving', async () => {
+    await flush()
+    streams[0]!.push(sse('ready', {}))
+    streams[0]!.push(sse('doses', { tick: 1, from: 'a', to: 'b', total: 4, byVaccine: {}, municipalities: [] }))
+    await flush()
+    expect(screen.getByTestId('doses').textContent).toBe('4')
+    await advance(4 * 60_000)
+    expect(screen.getByTestId('doses').textContent).toBe('4')
+    await advance(2 * 60_000)
+    expect(screen.getByTestId('doses').textContent).toBe('0')
+  })
+
+  it('does not leave abort listeners behind across backoff waits', async () => {
+    const add = vi.spyOn(AbortSignal.prototype, 'addEventListener')
+    const remove = vi.spyOn(AbortSignal.prototype, 'removeEventListener')
+    await flush()
+    for (let i = 0; i < 3; i++) {
+      streams[i]!.close()
+      await advance(backoffMs(i))
+    }
+    expect(streams).toHaveLength(4)
+    const waits = add.mock.calls.filter(([type, , opts]) => type === 'abort' && (opts as AddEventListenerOptions | undefined)?.once)
+    expect(waits).toHaveLength(3)
+    for (const [, fn] of waits) expect(remove.mock.calls.some(([t, f]) => t === 'abort' && f === fn)).toBe(true)
+    add.mockRestore()
+    remove.mockRestore()
+  })
+
   it('batch invalidates live and alert queries', async () => {
     await flush()
     streams[0]!.push(sse('batch', { generation: 8, invocationId: 'x' }))
