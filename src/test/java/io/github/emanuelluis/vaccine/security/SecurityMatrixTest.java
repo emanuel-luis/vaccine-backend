@@ -13,6 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.emanuelluis.vaccine.Auth;
+import io.github.emanuelluis.vaccine.admin.AdminRepository;
+import io.github.emanuelluis.vaccine.admin.AdminRows.Job;
 import io.github.emanuelluis.vaccine.analytics.AnalyticsRepository;
 import io.github.emanuelluis.vaccine.campaigns.CampaignRepository;
 import io.github.emanuelluis.vaccine.dashboard.DashboardRows.Rows;
@@ -166,6 +168,23 @@ class SecurityMatrixTest {
                 row("GET /api/v1/runs/latest", 401, 403, 403, 403, 200, 403),
                 // dose-ingest passes authorization; the empty body is then rejected with 400
                 row("POST /api/v1/doses", 401, 403, 403, 403, 403, 400),
+                // data management: data-admin only (the mock repository finds nothing: 404 for ids)
+                row("GET /api/v1/admin/sources", 401, 403, 403, 403, 200, 403),
+                row("GET /api/v1/admin/jobs", 401, 403, 403, 403, 200, 403),
+                row("GET /api/v1/admin/jobs?limit=0", 401, 403, 403, 403, 400, 403),
+                row("GET /api/v1/admin/jobs/" + ID, 401, 403, 403, 403, 404, 403),
+                row("GET /api/v1/admin/jobs/" + ID + "/log", 401, 403, 403, 403, 404, 403),
+                row("GET /api/v1/admin/jobs/" + ID + "/log?limit=0", 401, 403, 403, 403, 400, 403),
+                row("GET /api/v1/admin/dbt/invocations", 401, 403, 403, 403, 200, 403),
+                row("GET /api/v1/admin/dbt/invocations/abc/results", 401, 403, 403, 403, 404, 403),
+                row("GET /api/v1/admin/dbt/invocations/abc/results?status=bogus", 401, 403, 403, 403, 400, 403),
+                row("GET /api/v1/admin/reconciliation", 401, 403, 403, 403, 200, 403),
+                row("GET /api/v1/admin/ingest", 401, 403, 403, 403, 200, 403),
+                row("GET /api/v1/admin/ingest?hours=0", 401, 403, 403, 403, 400, 403),
+                // the empty body has no kind: 400 for data-admin
+                row("POST /api/v1/admin/jobs", 401, 403, 403, 403, 400, 403),
+                row("DELETE /api/v1/admin/jobs/" + ID, 401, 403, 403, 403, 403, 403),
+                row("POST /api/v1/admin/jobs/" + ID + "/log", 401, 403, 403, 403, 403, 403),
                 // an /api/v1 path without a rule (e.g. a future admin endpoint): denied to every role
                 row("GET /api/v1/admin/x", 401, 403, 403, 403, 403, 403),
                 // POST on a read path: denied
@@ -204,6 +223,9 @@ class SecurityMatrixTest {
 
     @MockitoBean
     private LiveEventHub hub;
+
+    @MockitoBean
+    private AdminRepository admin;
 
     @MockitoBean
     private JdbcClient jdbc;
@@ -297,6 +319,56 @@ class SecurityMatrixTest {
         org.assertj.core.api.Assertions.assertThat(body).startsWith(0xEF, 0xBB, 0xBF);
         org.assertj.core.api.Assertions.assertThat(new String(body, java.nio.charset.StandardCharsets.UTF_8))
                 .startsWith("﻿date_day;state;municipality_code;cnes_code;");
+    }
+
+    @Test
+    void queueingAJobAnswers202WithLocationAndRecordsTheCaller() throws Exception {
+        var id = java.util.UUID.fromString(ID);
+        var job = new Job(
+                id,
+                "dbt-build",
+                "queued",
+                "vaccine-web",
+                java.time.OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+        when(admin.enqueue(any(), anyString(), anyString())).thenReturn(job);
+        mvc.perform(post("/api/v1/admin/jobs")
+                        .with(caller(4))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"dbt-build\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Location", "/api/v1/admin/jobs/" + ID))
+                .andExpect(jsonPath("$.data.status").value("queued"));
+        org.mockito.Mockito.verify(admin)
+                .enqueue(
+                        any(),
+                        org.mockito.ArgumentMatchers.eq("dbt-build"),
+                        org.mockito.ArgumentMatchers.eq("vaccine-web"));
+    }
+
+    @Test
+    void aSecondActiveJobIs409AndAnUnknownKindIs400() throws Exception {
+        when(admin.enqueue(any(), anyString(), anyString()))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("ux_job_single_active"));
+        mvc.perform(post("/api/v1/admin/jobs")
+                        .with(caller(4))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"reconcile\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("job_already_active"));
+        mvc.perform(post("/api/v1/admin/jobs")
+                        .with(caller(4))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"drop-everything\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

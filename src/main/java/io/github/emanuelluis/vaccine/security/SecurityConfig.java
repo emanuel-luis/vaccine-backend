@@ -46,6 +46,18 @@ public class SecurityConfig {
         "/api/v1/health-units/*/history"
     };
 
+    /** Data management reads (data-admin); like READER_PATHS, explicit so a new admin endpoint stays denied. */
+    static final String[] ADMIN_PATHS = {
+        "/api/v1/admin/sources",
+        "/api/v1/admin/jobs",
+        "/api/v1/admin/jobs/*",
+        "/api/v1/admin/jobs/*/log",
+        "/api/v1/admin/dbt/invocations",
+        "/api/v1/admin/dbt/invocations/*/results",
+        "/api/v1/admin/reconciliation",
+        "/api/v1/admin/ingest"
+    };
+
     @Bean
     SecurityFilterChain api(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
@@ -57,6 +69,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/doses")
                         .hasRole(DOSE_INGEST)
                         .requestMatchers("/api/v1/runs/**")
+                        .hasRole(DATA_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/jobs")
+                        .hasRole(DATA_ADMIN)
+                        .requestMatchers(HttpMethod.GET, ADMIN_PATHS)
                         .hasRole(DATA_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/v1/campaigns/**")
                         .hasRole(GESTOR)
