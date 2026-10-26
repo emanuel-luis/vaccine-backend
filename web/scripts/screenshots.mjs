@@ -44,15 +44,17 @@ async function settle(page) {
   await page.waitForTimeout(2000)
 }
 
-async function snap(page, name) {
-  await page.screenshot({ path: `${out}/${name}.png`, fullPage: true })
+// `maxHeight` keeps long pages (a 200-row table) within a README-friendly size.
+async function snap(page, name, maxHeight) {
+  const height = Math.min(maxHeight ?? Infinity, await page.evaluate(() => document.documentElement.scrollHeight))
+  await page.screenshot({ path: `${out}/${name}.png`, fullPage: true, clip: { x: 0, y: 0, width: 1440, height } })
   console.log(`wrote ${name}.png`)
 }
 
-async function shot(page, path, name) {
+async function shot(page, path, name, maxHeight) {
   await page.goto(path)
   await settle(page)
-  await snap(page, name)
+  await snap(page, name, maxHeight)
 }
 
 const digits = (s) => Number(s.replace(/\D/g, ''))
@@ -102,9 +104,9 @@ await shot(national, '/cobertura?ano=2025', 'cobertura-br')
 await national.goto('/cobertura/BA/2927408?ano=2025')
 await settle(national)
 await national.getByRole('table', { name: 'Unidades de saúde do município' }).locator('tbody tr').first().waitFor()
-await snap(national, 'cobertura-salvador-unidades')
+await snap(national, 'cobertura-salvador-unidades', 1500)
 
-await shot(national, '/alertas?ano=2025', 'alertas')
+await shot(national, '/alertas?ano=2025', 'alertas', 1400)
 
 await dropE2eCampaigns(national)
 await national.goto('/campanhas')
