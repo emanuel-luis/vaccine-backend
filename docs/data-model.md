@@ -283,6 +283,13 @@ Without a token every endpoint except health, `/v3/api-docs` and Swagger UI answ
 | `GET /api/v1/me` | P G A | none | the token: username, name, roles, scope `{level, state, municipalityCode, label}` |
 | `GET /api/v1/dashboard/summary` | P G A | S | `marts.mart_doses_daily` + `live.dose_daily` above `batch_generation` (merged) |
 | `GET /api/v1/dashboard/doses/timeseries` | P G A | S | same merge, grouped by day, week or month |
+| `GET /api/v1/dashboard/doses/by-vaccine` | P G A | S | same merge, grouped by vaccine and dose, joined to `marts.dim_vaccine`; small municipality cells suppressed |
+| `GET /api/v1/dashboard/doses/by-age-band` | P G A | S | same merge, grouped by `age_band_years` (null = Unknown) |
+| `GET /api/v1/dashboard/map` | P G A | S (state level: S>=UF) | same merge per state or municipality of `marts.dim_municipality`; coverage divides by `marts.mart_coverage_target_by_municipality.expected_population` (state = sum), numerator limited to `age_band_years <= coverage_target_age_years` |
+| `GET /api/v1/dashboard/health-units` | P G A | S | `marts.dim_health_unit` (current, active) of one municipality left-joined to the same merge by `cnes_code` |
+| `GET /api/v1/reference/regions` | P G A | S | `marts.dim_municipality` without the Unknown member: states, or the municipalities of `state` |
+| `GET /api/v1/reference/vaccines` | P G A | none | `marts.dim_vaccine` without the Unknown member |
+| `GET /api/v1/exports/{doses-daily,coverage-municipality,health-units}` | G | S | the same queries as the dashboard endpoints, as CSV (decision 53) |
 | `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event`; filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
 | `GET /api/v1/doses/by-state-month` | P G A | S>=UF | `marts.mart_doses_by_state_month` |
 | `GET /api/v1/doses/by-age-band` | P G A | S>=UF | `marts.mart_doses_by_age_band` |

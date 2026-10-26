@@ -26,7 +26,7 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 ## Repo map
 - `src/main/java/io/github/emanuelluis/vaccine/`: `analytics/` (doses, coverage), `units/`
   (SCD2 history), `runs/` (ops runs), `ingest/` (POST /api/v1/doses), `security/` (resource server, roles, `ScopeGuard`, `/me`), `live/` (LISTEN hub, SSE
-  stream), `dashboard/` (merged batch + live queries), `web/` (envelope, problem details).
+  stream), `dashboard/` (merged batch + live queries, `Suppression`), `reference/` (region and vaccine lists), `exports/` (CSV, gestor only), `web/` (envelope, problem details).
   `JdbcClient` + records, no JPA.
 - `src/main/resources/db/migration/`: Flyway migrations (history in schema `ops`)
 - `elt/src/vaccine_elt/`: `fetch.py` + `sources/` (public endpoints -> snapshots), `manifest.py`,
@@ -64,8 +64,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   never 500. No endpoint returns an individual dose.
 - Every data endpoint applies the caller's region scope (token claim `region_scope`) through
   `ScopeGuard` and `RegionFilter`; repositories take no raw region parameter. URL roles live in
-  `SecurityConfig` only; everything not listed is denied. Small-cell suppression arrives later in
-  the API, never in marts.
+  `SecurityConfig` only; everything not listed is denied. Small-cell suppression (k = 5, decision 52): a count of 1 to 4 is hidden
+  when its geography is a municipality or health unit (never states, national or zeros), only in the API and
+  exports through `dashboard/Suppression`, never in marts.
 - Live doses are absorbed by dbt only through `ops.close_live_generation()` (called by the
   `on-run-start` hook of `dbt run` and `dbt build`); serving adds `live.dose_daily` rows with
   `generation > batch_generation` of the mart it reads, in the same statement. `fact_vaccination`
