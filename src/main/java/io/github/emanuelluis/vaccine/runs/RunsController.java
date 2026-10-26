@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +27,10 @@ public class RunsController {
             UUID runId,
             String command,
             String status,
-            Long seed,
-            BigDecimal sampleFraction,
+            @Nullable Long seed,
+            @Nullable BigDecimal sampleFraction,
             OffsetDateTime startedAt,
-            OffsetDateTime finishedAt,
+            @Nullable OffsetDateTime finishedAt,
             List<TableLoad> tables) {}
 
     private record RunRow(

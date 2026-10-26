@@ -2,6 +2,7 @@ package io.github.emanuelluis.vaccine.live;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.DoseJson;
 import io.github.emanuelluis.vaccine.SpeedLayerSetup;
 import io.github.emanuelluis.vaccine.TestcontainersConfiguration;
@@ -20,15 +21,33 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 /** Real HTTP: the stream sends {@code ready}, then a coalesced {@code doses} event after a POST. */
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "vaccine.ingest.enabled=true")
-@Import({TestcontainersConfiguration.class, SpeedLayerSetup.FixedClockConfiguration.class})
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@Import({
+    TestcontainersConfiguration.class,
+    SpeedLayerSetup.FixedClockConfiguration.class,
+    StreamIT.TokenDecoderConfiguration.class
+})
 class StreamIT {
+
+    /** Bearer values are test tokens: {@code reader} and {@code ingest} (see {@link Auth#decoder}). */
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TokenDecoderConfiguration {
+        @Bean
+        @Primary
+        JwtDecoder testJwtDecoder() {
+            return Auth.decoder(SpeedLayerSetup.NOW);
+        }
+    }
 
     @LocalServerPort
     private int port;
@@ -57,6 +76,7 @@ class StreamIT {
         var response = client.sendAsync(
                         HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/stream"))
                                 .header("Accept", "text/event-stream")
+                                .header("Authorization", "Bearer reader")
                                 .build(),
                         HttpResponse.BodyHandlers.ofLines())
                 .thenApply(r -> {
@@ -75,6 +95,7 @@ class StreamIT {
         assertThat(ready).startsWith("data:").contains("\"region\":\"BR\"").contains("\"batchGeneration\":0");
 
         var post = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/doses"))
+                .header("Authorization", "Bearer ingest")
                 .header("Idempotency-Key", "stream-1")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(DoseJson.json(DoseJson.valid(UUID.randomUUID()))))

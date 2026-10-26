@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.DoseJson;
 import io.github.emanuelluis.vaccine.SpeedLayerSetup;
 import java.util.UUID;
@@ -41,6 +42,7 @@ class MergedDosesIT {
     private void ingest(int n) throws Exception {
         for (int i = 0; i < n; i++) {
             mvc.perform(post("/api/v1/doses")
+                            .with(Auth.ingest())
                             .header("Idempotency-Key", "k-" + UUID.randomUUID())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(DoseJson.json(DoseJson.valid(UUID.randomUUID()))))
@@ -49,7 +51,8 @@ class MergedDosesIT {
     }
 
     private ResultActions summary(String extra) throws Exception {
-        return mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-01&to=2026-10-31" + extra));
+        return mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-01&to=2026-10-31" + extra)
+                .with(Auth.reader()));
     }
 
     /** What the dbt build does: absorb the closed generations into the mart and stamp its generation. */
@@ -102,7 +105,8 @@ class MergedDosesIT {
     @Test
     void timeseriesGroupsByDayWeekAndMonth() throws Exception {
         ingest(2);
-        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31"))
+        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31")
+                        .with(Auth.reader()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.layer").value("merged"))
                 .andExpect(jsonPath("$.meta.count").value(3))
@@ -112,26 +116,32 @@ class MergedDosesIT {
                 .andExpect(jsonPath("$.data[1].doses").value(35))
                 .andExpect(jsonPath("$.data[2].periodStart").value("2026-10-25"))
                 .andExpect(jsonPath("$.data[2].doses").value(2));
-        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=month"))
+        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=month")
+                        .with(Auth.reader()))
                 .andExpect(jsonPath("$.meta.count").value(1))
                 .andExpect(jsonPath("$.data[0].periodStart").value("2026-10-01"))
                 .andExpect(jsonPath("$.data[0].doses").value(47));
-        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=week"))
+        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=week")
+                        .with(Auth.reader()))
                 .andExpect(jsonPath("$.data[0].periodStart").value("2026-10-19"))
                 .andExpect(jsonPath("$.data[0].doses").value(47));
     }
 
     @Test
     void badParametersAre400() throws Exception {
-        mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-31&to=2026-10-01"))
+        mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-31&to=2026-10-01")
+                        .with(Auth.reader()))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/dashboard/summary?from=2020-01-01&to=2026-10-01"))
+        mvc.perform(get("/api/v1/dashboard/summary?from=2020-01-01&to=2026-10-01")
+                        .with(Auth.reader()))
                 .andExpect(status().isBadRequest());
         summary("&ageBand=7").andExpect(status().isBadRequest());
         summary("&region=XX:1").andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=year"))
+        mvc.perform(get("/api/v1/dashboard/doses/timeseries?from=2026-10-01&to=2026-10-31&granularity=year")
+                        .with(Auth.reader()))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-01")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/dashboard/summary?from=2026-10-01").with(Auth.reader()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

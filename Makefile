@@ -8,6 +8,7 @@ DBT := $(UV) dbt
 # dbt takes these options after the subcommand only: `$(DBT) <command> $(DBT_DIRS)`.
 DBT_DIRS := --project-dir dbt --profiles-dir dbt
 API_URL ?= http://localhost:8080
+KEYCLOAK_URL ?= http://localhost:8180
 ROWS ?= 200000
 SEED ?= 42
 
@@ -20,7 +21,7 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
-	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check
+	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -83,8 +84,11 @@ reconcile: env ## Check live.dose_daily and the serving merge against the landin
 
 demo: up load-reference generate dbt-build reconcile smoke ## One command: stack, data, dbt marts, reconciliation, API answering
 
-smoke: ## Call every API endpoint and require rows (stack and marts must be up)
-	bash scripts/smoke.sh $(API_URL)
+smoke: ## Call every API endpoint with a Keycloak token and require rows (stack and marts must be up)
+	KEYCLOAK_URL=$(KEYCLOAK_URL) bash scripts/smoke.sh $(API_URL)
 
-speed-check: ## Post 3 doses, check today +3, run dbt-build + reconcile, check the total is unchanged (needs VACCINE_INGEST_ENABLED=true)
-	bash scripts/speed-check.sh $(API_URL)
+speed-check: ## Post 3 doses, check today +3, run dbt-build + reconcile, check the total is unchanged
+	KEYCLOAK_URL=$(KEYCLOAK_URL) bash scripts/speed-check.sh $(API_URL)
+
+openapi: ## Regenerate docs/api/openapi.json from the controllers (no Docker needed; commit the result)
+	$(MVN) test-compile failsafe:integration-test failsafe:verify -Dit.test=OpenApiSpecIT -Dopenapi.write=true

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.DoseJson;
 import io.github.emanuelluis.vaccine.SpeedLayerSetup;
 import java.util.List;
@@ -46,8 +47,10 @@ class DoseIngestIT {
     }
 
     private ResultActions ingest(String key, Map<String, Object> body) throws Exception {
-        var request =
-                post("/api/v1/doses").contentType(MediaType.APPLICATION_JSON).content(DoseJson.json(body));
+        var request = post("/api/v1/doses")
+                .with(Auth.ingest())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(DoseJson.json(body));
         if (key != null) {
             request.header("Idempotency-Key", key);
         }
@@ -183,7 +186,7 @@ class DoseIngestIT {
         var rejects = rejects();
         assertThat(rejects).hasSize(1);
         assertThat(rejects.get(0))
-                .containsEntry("client_id", "anonymous")
+                .containsEntry("client_id", "vaccine-simulator")
                 .containsEntry("idempotency_key", "key-422")
                 .containsEntry("http_status", 422)
                 .containsEntry("reason", code);
@@ -218,6 +221,7 @@ class DoseIngestIT {
                 .andExpect(jsonPath("$.code").value("validation_failed"));
         ingest("key-1", DoseJson.with(ok, "cnesCode", null)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/doses")
+                        .with(Auth.ingest())
                         .header("Idempotency-Key", "key-json")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{not json"))
