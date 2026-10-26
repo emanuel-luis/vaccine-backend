@@ -1,4 +1,4 @@
-export type LiveState = 'live' | 'reconnecting' | 'paused'
+import { type LiveState, useLive } from '../live/LiveProvider'
 
 const LABEL: Record<LiveState, string> = {
   live: 'Ao vivo',
@@ -6,12 +6,22 @@ const LABEL: Record<LiveState, string> = {
   paused: 'Pausado',
 }
 
-// Static for now: the SSE LiveProvider arrives with the dashboards.
-export function LiveStatus({ state = 'paused' }: { state?: LiveState }) {
+/** Connection pill plus the rolling "+N doses" ticker (polite live region, refreshed at most every 30 s). */
+export function LiveStatus() {
+  const { status, recentDoses } = useLive()
   return (
-    <span className={`pill pill-${state}`} role="status" aria-label={`Atualização: ${LABEL[state]}`}>
-      <span className="pill-dot" aria-hidden="true" />
-      {LABEL[state]}
-    </span>
+    <>
+      <span className={`pill pill-${status}`} role="status" aria-label={`Atualização: ${LABEL[status]}`}>
+        <span className="pill-dot" aria-hidden="true" />
+        {LABEL[status]}
+      </span>
+      <span className="live-ticker" aria-live="polite">
+        {recentDoses > 0 && (
+          <span key={recentDoses} className="live-ticker-value">
+            +{recentDoses.toLocaleString('pt-BR')} doses
+          </span>
+        )}
+      </span>
+    </>
   )
 }

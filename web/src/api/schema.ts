@@ -4,6 +4,54 @@
  */
 
 export interface paths {
+    "/api/v1/alerts/low-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["lowCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put: operations["update"];
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/coverage": {
         parameters: {
             query?: never;
@@ -287,6 +335,14 @@ export interface components {
             doses?: number | null;
             suppressed: boolean;
         };
+        ApiItemCampaign: {
+            data: components["schemas"]["Campaign"];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiItemCampaignDetail: {
+            data: components["schemas"]["CampaignDetail"];
+            meta: components["schemas"]["Meta"];
+        };
         ApiItemDoseAccepted: {
             data: components["schemas"]["DoseAccepted"];
             meta: components["schemas"]["Meta"];
@@ -303,6 +359,10 @@ export interface components {
             data: components["schemas"]["AgeBandDoses"][];
             meta: components["schemas"]["Meta"];
         };
+        ApiResponseCampaign: {
+            data: components["schemas"]["Campaign"][];
+            meta: components["schemas"]["Meta"];
+        };
         ApiResponseDosesByAgeBand: {
             data: components["schemas"]["DosesByAgeBand"][];
             meta: components["schemas"]["Meta"];
@@ -317,6 +377,10 @@ export interface components {
         };
         ApiResponseHealthUnitVersion: {
             data: components["schemas"]["HealthUnitVersion"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseLowCoverage: {
+            data: components["schemas"]["LowCoverage"][];
             meta: components["schemas"]["Meta"];
         };
         ApiResponseMapArea: {
@@ -346,6 +410,68 @@ export interface components {
         ApiResponseVaccineDoses: {
             data: components["schemas"]["VaccineDoses"][];
             meta: components["schemas"]["Meta"];
+        };
+        Campaign: {
+            /** Format: uuid */
+            campaignId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            doseLabel?: string | null;
+            /** Format: date */
+            endsOn: string;
+            name: string;
+            regionScope: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: int32 */
+            targetDoses: number;
+            /** Format: date-time */
+            updatedAt: string;
+            vaccineCode: string;
+            /** Format: int32 */
+            version: number;
+        };
+        CampaignDetail: {
+            /** Format: uuid */
+            campaignId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            doseLabel?: string | null;
+            /** Format: date */
+            endsOn: string;
+            name: string;
+            progress: components["schemas"]["Progress"];
+            regionScope: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: int32 */
+            targetDoses: number;
+            /** Format: date-time */
+            updatedAt: string;
+            vaccineCode: string;
+            /** Format: int32 */
+            version: number;
+        };
+        CampaignRequest: {
+            doseLabel?: string | null;
+            /** Format: date */
+            endsOn: string;
+            name: string;
+            regionScope: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: int32 */
+            targetDoses: number;
+            vaccineCode: string;
+        };
+        DailyPoint: {
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            doses?: number | null;
+            suppressed: boolean;
         };
         DoseAccepted: {
             /** Format: uuid */
@@ -422,6 +548,20 @@ export interface components {
             /** Format: date */
             validTo: string;
         };
+        LowCoverage: {
+            abbr?: string | null;
+            code: string;
+            coveragePct: number;
+            denominator: number;
+            doseLabel: string;
+            gapPp: number;
+            goalPct: number;
+            level: string;
+            name: string;
+            /** Format: int64 */
+            numerator: number;
+            vaccineCode: string;
+        };
         MapArea: {
             abbr?: string | null;
             code: string;
@@ -449,6 +589,13 @@ export interface components {
             /** Format: int32 */
             suppressedCells: number;
             synthetic: boolean;
+        };
+        Progress: {
+            daily: components["schemas"]["DailyPoint"][];
+            /** Format: int64 */
+            dosesToDate?: number | null;
+            pct?: number | null;
+            suppressed: boolean;
         };
         Region: {
             abbr?: string | null;
@@ -531,6 +678,7 @@ export interface components {
             suppressed: boolean;
         };
         Vaccine: {
+            coverageGoalPct?: number | null;
             doseLabel: string;
             /** Format: int32 */
             doseNumber: number;
@@ -557,6 +705,151 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    lowCoverage: {
+        parameters: {
+            query: {
+                level: string;
+                state?: string;
+                year?: number;
+                vaccine?: string;
+                dose?: string;
+                region?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseLowCoverage"];
+                };
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: {
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCampaign"];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemCampaign"];
+                };
+            };
+        };
+    };
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemCampaignDetail"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemCampaign"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     coverage: {
         parameters: {
             query?: {

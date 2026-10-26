@@ -51,6 +51,13 @@ public class ApiExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(PreconditionException.class)
+    public ProblemDetail precondition(PreconditionException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(ex.status(), ex.getMessage());
+        problem.setProperty("code", ex.code());
+        return problem;
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ProblemDetail forbidden(ForbiddenException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());

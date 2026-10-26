@@ -38,6 +38,8 @@ public class SecurityConfig {
         "/api/v1/stream",
         "/api/v1/dashboard/**",
         "/api/v1/reference/**",
+        "/api/v1/campaigns/**",
+        "/api/v1/alerts/**",
         "/api/v1/doses/by-state-month",
         "/api/v1/doses/by-age-band",
         "/api/v1/coverage",
@@ -56,6 +58,12 @@ public class SecurityConfig {
                         .hasRole(DOSE_INGEST)
                         .requestMatchers("/api/v1/runs/**")
                         .hasRole(DATA_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/campaigns/**")
+                        .hasRole(GESTOR)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/campaigns/**")
+                        .hasRole(GESTOR)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/campaigns/**")
+                        .hasRole(GESTOR)
                         .requestMatchers(HttpMethod.GET, "/api/v1/exports/**")
                         .hasRole(GESTOR)
                         // Explicit paths only: a new endpoint stays denied until it gets a rule here.

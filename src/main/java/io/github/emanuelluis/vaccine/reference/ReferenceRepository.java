@@ -1,6 +1,7 @@
 package io.github.emanuelluis.vaccine.reference;
 
 import io.github.emanuelluis.vaccine.region.RegionFilter;
+import java.math.BigDecimal;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -21,7 +22,8 @@ public class ReferenceRepository {
             String doseLabel,
             int doseNumber,
             boolean isCoverageIndicator,
-            @Nullable Integer targetAgeYears) {}
+            @Nullable Integer targetAgeYears,
+            @Nullable BigDecimal coverageGoalPct) {}
 
     private final JdbcClient jdbc;
 
@@ -66,7 +68,7 @@ public class ReferenceRepository {
     public List<Vaccine> vaccines() {
         return jdbc.sql("""
                         select vaccine_code, vaccine_name, dose_label, dose_number, is_coverage_indicator,
-                               coverage_target_age_years as target_age_years
+                               coverage_target_age_years as target_age_years, coverage_goal_pct
                         from marts.dim_vaccine
                         where vaccine_code <> 'UNKNOWN'
                         order by vaccine_code, dose_number

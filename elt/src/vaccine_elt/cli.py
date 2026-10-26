@@ -1,4 +1,4 @@
-"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate | reconcile`.
+"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate | reconcile | simulate`.
 
 Database connection: libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD)."""
 
@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import signal
 import sys
 import time
 from collections.abc import Sequence
@@ -15,11 +17,13 @@ from pathlib import Path
 import psycopg
 
 from vaccine_elt import config, fetch
-from vaccine_elt.generator.inputs import schedule_path
+from vaccine_elt.generator.core import LOCAL_TZ
+from vaccine_elt.generator.inputs import load_reference_data, load_schedule, schedule_path
 from vaccine_elt.generator.writer import run_generate
 from vaccine_elt.load import load_reference
 from vaccine_elt.manifest import Manifest, ManifestError, read_manifest, write_manifest
 from vaccine_elt.reconcile import run_reconcile
+from vaccine_elt.simulator import Clock, Drawer, Simulator, TokenCache, urllib_transport
 
 FETCHERS = {
     "municipalities": fetch.fetch_municipalities,
@@ -60,6 +64,23 @@ def _parser() -> argparse.ArgumentParser:
     gen.add_argument(
         "--schedule", type=Path, default=None, help="default: dbt/seeds/pni_child_schedule.csv"
     )
+    sim = commands.add_parser(
+        "simulate", help="post synthetic live doses to the API (Ctrl-C or SIGTERM to stop)"
+    )
+    sim.add_argument(
+        "--rate",
+        type=float,
+        default=float(os.environ.get("SIMULATOR_RATE_PER_SECOND", "2")),
+        help="doses per second, 0 = paused (default: $SIMULATOR_RATE_PER_SECOND or 2)",
+    )
+    sim.add_argument(
+        "--invalid-ratio",
+        type=float,
+        default=float(os.environ.get("SIMULATOR_INVALID_RATIO", "0.01")),
+        help="share of deliberately invalid doses (default: $SIMULATOR_INVALID_RATIO or 0.01)",
+    )
+    sim.add_argument("--seed", type=int, default=None, help="default: random")
+    sim.add_argument("--max-doses", type=int, default=None, help="stop after N doses (demos)")
     commands.add_parser(
         "reconcile",
         help="check live.dose_daily and the serving merge against the landing tables"
@@ -75,6 +96,46 @@ def _manifest_or_empty(directory: Path) -> Manifest:
         if (directory / "manifest.json").exists():
             raise
         return Manifest()
+
+
+def _simulate(args: argparse.Namespace, directory: Path) -> int:
+    secret = os.environ.get("SIMULATOR_CLIENT_SECRET", "")
+    api_url = os.environ.get("API_URL", "http://localhost:8080").rstrip("/")
+    token_url = os.environ.get(
+        "TOKEN_URL", "http://localhost:8180/realms/vaccine/protocol/openid-connect/token"
+    )
+    if not secret:
+        raise ValueError("SIMULATOR_CLIENT_SECRET is not set")
+    if args.rate < 0 or not 0 <= args.invalid_ratio <= 1:
+        raise ValueError("--rate must be >= 0 and --invalid-ratio within 0..1")
+    clock = Clock()
+    today = clock.now().astimezone(LOCAL_TZ).date()
+    drawer = Drawer(
+        load_reference_data(directory, today),
+        load_schedule(schedule_path()),
+        seed=args.seed,
+        invalid_ratio=args.invalid_ratio,
+    )
+    simulator = Simulator(
+        drawer,
+        TokenCache(
+            urllib_transport,
+            clock,
+            token_url,
+            os.environ.get("SIMULATOR_CLIENT_ID", "vaccine-simulator"),
+            secret,
+        ),
+        urllib_transport,
+        clock,
+        api_url,
+        args.rate,
+    )
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # PID 1 ignores SIGTERM by default
+    try:
+        simulator.run(args.max_doses)
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -115,6 +176,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             for result in results:
                 print(f"{result.table}: {result.rows_loaded} rows")
             print(f"persons: {data.persons}, sample_fraction: {data.sample_fraction}")
+        elif args.command == "simulate":
+            return _simulate(args, directory)
         elif args.command == "reconcile":
             with psycopg.connect(autocommit=True) as conn:
                 checks = run_reconcile(conn)

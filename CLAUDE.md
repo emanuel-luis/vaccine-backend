@@ -13,6 +13,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   `make generate` (`ROWS`, `SEED`), `make dbt-build`, `make reconcile`, `make smoke`,
   `make speed-check`, `make openapi` (rewrites `docs/api/openapi.json`, no Docker),
   `make demo` (up + load-reference + generate + dbt build + reconcile + smoke)
+- Simulator: compose service `simulator` posts `SIMULATOR_RATE_PER_SECOND` synthetic doses per
+  second (0 pauses it); `make simulate` (`RATE`, `MAX_DOSES`) runs it from the host against the
+  running stack; `make speed-check` stops it while counting and starts it again on exit
 - Web app: `make web-install`, `make web-lint`, `make web-test`, `make web-build`; dev server
   `cd web && npm run dev` (proxies `/api` to localhost:8080); `npm run gen:api` regenerates the
   typed client from `docs/api/openapi.json` (CI fails when it drifts)
@@ -26,12 +29,14 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 ## Repo map
 - `src/main/java/io/github/emanuelluis/vaccine/`: `analytics/` (doses, coverage), `units/`
   (SCD2 history), `runs/` (ops runs), `ingest/` (POST /api/v1/doses), `security/` (resource server, roles, `ScopeGuard`, `/me`), `live/` (LISTEN hub, SSE
-  stream), `dashboard/` (merged batch + live queries, `Suppression`), `reference/` (region and vaccine lists), `exports/` (CSV, gestor only), `web/` (envelope, problem details).
+  stream), `dashboard/` (merged batch + live queries, `Suppression`), `reference/` (region and vaccine lists), `alerts/` (low coverage vs goals), `campaigns/` (CRUD with ETag/If-Match, progress), `exports/` (CSV, gestor only), `web/` (envelope, problem details).
   `JdbcClient` + records, no JPA.
 - `src/main/resources/db/migration/`: Flyway migrations (history in schema `ops`)
 - `elt/src/vaccine_elt/`: `fetch.py` + `sources/` (public endpoints -> snapshots), `manifest.py`,
   `contracts.py` (typed raw contracts), `load.py` (load-reference), `runlog.py` (ops tables),
-  `reconcile.py` (reconcile)
+  `reconcile.py` (reconcile), `simulator.py` (live dose simulator, `simulate`)
+- `elt/Dockerfile`: image for the simulator (and the data-management worker), built with the repo
+  root as context; keeps the repo layout because `config.REPO_ROOT` is `parents[3]`
 - `data/sources/`: vendored snapshots + `manifest.json` (sha256-verified on load)
 - `dbt/`: staging (incl. `stg_live__*`), `intermediate/int_health_unit_versions` (SCD2), marts,
   seeds, singular tests, `macros/live_generation.sql` (run hooks)
@@ -55,12 +60,13 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   rows_loaded + rows_rejected` in `ops.load_run_table`. Never read the wall clock in data paths
   (run metadata timestamps only), except ingest validation, `received_at` and the dashboard's
   "today".
-- dbt owns `staging`, `intermediate`, `marts`, `reference`; Flyway owns `raw`, `ops`, `live`. dbt
+- dbt owns `staging`, `intermediate`, `marts`, `reference`; Flyway owns `raw`, `ops`, `live`, `app`. dbt
   calls only `ops.close_live_generation()` (run hooks) and reads `raw.live_dose` and `ops`.
   Mart columns follow `docs/data-model.md`; change the dbt contract, the API records/queries and
   `src/test/resources/fixtures/marts.sql` in the same PR.
 - The API reads `marts`, `ops` and `live`. It writes only `raw.live_dose` + `live.dose_daily` (one
-  transaction per dose, generation protocol) and `ops.ingest_reject`. A missing mart answers 503,
+  transaction per dose, generation protocol), `ops.ingest_reject` and `app.campaign` (gestor campaigns,
+  optimistic locking on `version`). A missing mart answers 503,
   never 500. No endpoint returns an individual dose.
 - Every data endpoint applies the caller's region scope (token claim `region_scope`) through
   `ScopeGuard` and `RegionFilter`; repositories take no raw region parameter. URL roles live in

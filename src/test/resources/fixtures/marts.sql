@@ -45,15 +45,16 @@ insert into marts.dim_health_unit values
 create table marts.dim_vaccine (
     vaccine_key uuid, vaccine_code text, vaccine_name text, dose_label text, dose_number integer,
     recommended_age_days integer, min_age_days integer, max_age_days integer, min_interval_days integer,
-    is_coverage_indicator boolean, coverage_target_age_years integer
+    is_coverage_indicator boolean, coverage_target_age_years integer, coverage_goal_pct numeric(5, 2),
+    goal_source text
 );
 insert into marts.dim_vaccine values
-    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D1', 1, 60, 42, 730, 0, false, null),
-    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D2', 2, 120, 42, 730, 30, false, null),
-    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D3', 3, 180, 42, 730, 30, true, 1),
-    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D1', 1, 60, 42, 105, 0, false, null),
-    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D2', 2, 120, 70, 240, 30, true, 1),
-    (gen_random_uuid(), 'BCG', 'BCG', 'D1', 1, 0, 0, null, 0, false, null);
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D1', 1, 60, 42, 730, 0, false, null, null, null),
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D2', 2, 120, 42, 730, 30, false, null, null, null),
+    (gen_random_uuid(), 'PENTA', 'Pentavalente', 'D3', 3, 180, 42, 730, 30, true, 1, 95, 'fixture goal'),
+    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D1', 1, 60, 42, 105, 0, false, null, null, null),
+    (gen_random_uuid(), 'ROTA', 'Rotavirus', 'D2', 2, 120, 70, 240, 30, true, 1, 90, 'fixture goal'),
+    (gen_random_uuid(), 'BCG', 'BCG', 'D1', 1, 0, 0, null, 0, false, null, null, null);
 
 create table marts.dim_vaccine_lot (
     lot_key uuid, lot_number text, vaccine_code text, manufacturer_name text, manufactured_on date,
