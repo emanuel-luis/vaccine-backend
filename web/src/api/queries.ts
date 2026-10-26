@@ -114,9 +114,17 @@ export function useCampaignProgressList(campaigns: Campaign[]) {
   return useQueries({ queries: campaigns.map((c) => campaignQuery(api, c.campaignId, ['live', 'campaign', c.campaignId])) })
 }
 
-/** Edit form source: not live, so the version the user started from stays the one sent in If-Match. */
+/**
+ * Edit form source: not live, so the version the user started from stays the one sent in If-Match.
+ * Never served from cache (gcTime 0, refetch on every mount): the form must start from the server's current version.
+ */
 export function useCampaignForEdit(id: string) {
-  return useQuery({ ...campaignQuery(useApi(), id, ['campaigns', id]), refetchOnWindowFocus: false, staleTime: Infinity })
+  return useQuery({
+    ...campaignQuery(useApi(), id, ['campaigns', id]),
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    gcTime: 0,
+  })
 }
 
 /** Create (no id) or update (id + version for If-Match). Throws ApiError with status, code and field. */

@@ -20,6 +20,8 @@ export function CampanhaDetalhe() {
   const q = useCampaignProgress(id)
   const del = useDeleteCampaign()
   const [confirming, setConfirming] = useState(false)
+  // The version the user saw when the dialog opened: the live query refetches and may move ahead of it.
+  const [deleteVersion, setDeleteVersion] = useState(0)
   const [deleteError, setDeleteError] = useState<string>()
   const c = q.data
   const today = isoDay(new Date())
@@ -56,7 +58,7 @@ export function CampanhaDetalhe() {
   const hidden = p.suppressed
   const onDelete = () =>
     del.mutate(
-      { id: c.campaignId, version: c.version },
+      { id: c.campaignId, version: deleteVersion },
       {
         onSuccess: () => void navigate('/campanhas'),
         onError: (e) =>
@@ -84,6 +86,7 @@ export function CampanhaDetalhe() {
             className="btn"
             onClick={() => {
               setDeleteError(undefined)
+              setDeleteVersion(c.version)
               setConfirming(true)
             }}
           >
@@ -125,6 +128,19 @@ export function CampanhaDetalhe() {
             <p role="alert" className="field-error">
               {deleteError}
             </p>
+          )}
+          {deleteError === STALE_MESSAGE && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                void q.refetch()
+                setConfirming(false)
+                setDeleteError(undefined)
+              }}
+            >
+              Recarregar
+            </button>
           )}
         </ConfirmDialog>
       )}

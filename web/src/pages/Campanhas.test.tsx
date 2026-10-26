@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react'
+import { focusManager } from '@tanstack/react-query'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -109,6 +110,78 @@ describe('role gating', () => {
     const del = fetchMock.mock.calls.map(([r]) => r).find((r) => r instanceof Request && r.method === 'DELETE') as Request
     expect(del.headers.get('If-Match')).toBe('"3"')
     expect(await screen.findByTestId('loc')).toHaveTextContent('/campanhas')
+  })
+})
+
+describe('fresh versions', () => {
+  beforeEach(() => as(['gestor']))
+  afterEach(() => vi.unstubAllGlobals())
+
+  /** Serves the campaign from `served` (mutable) and answers writes with `writeStatus`. */
+  function stub() {
+    const state = { served: detail, writeStatus: 412 }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(new URL(String(input), 'http://api.test'), init)
+      const path = new URL(req.url).pathname
+      if (req.method === 'PUT') return Response.json({ data: state.served.data, meta: {} }, { status: state.writeStatus })
+      if (req.method === 'DELETE') return Response.json({ status: 412 }, { status: 412 })
+      if (path === `/api/v1/campaigns/${ID}`) return Response.json(state.served)
+      const found = (routes as Record<string, unknown>)[path]
+      return found ? Response.json(found) : Response.json({}, { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const sent = (method: string) =>
+      fetchMock.mock.calls.map(([r]) => r).filter((r): r is Request => r instanceof Request && r.method === method)
+    return { state, sent }
+  }
+  const newer = (name: string, version: number) => ({ ...detail, data: { ...detail.data, name, version } })
+
+  it('edit refetches on remount instead of serving the cached version', async () => {
+    const { state } = stub()
+    app(`/campanhas/${ID}`)
+    await userEvent.click(await screen.findByRole('link', { name: 'Editar' }))
+    expect(await screen.findByLabelText('Nome')).toHaveValue('Multivacinação')
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    await screen.findByText('Doses até hoje')
+    state.served = newer('Outra pessoa editou', 4)
+    await userEvent.click(screen.getByRole('link', { name: 'Editar' }))
+    expect(await screen.findByLabelText('Nome')).toHaveValue('Outra pessoa editou')
+  })
+
+  it('the Recarregar button after a 412 resets the form to the fresh version', async () => {
+    const { state, sent } = stub()
+    app(`/campanhas/${ID}/editar`)
+    await userEvent.type(await screen.findByLabelText('Nome'), ' 2')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Esta campanha foi alterada por outra pessoa. Recarregue.')
+    expect(sent('PUT')[0]?.headers.get('If-Match')).toBe('"3"')
+
+    state.served = newer('Versão nova', 4)
+    state.writeStatus = 200
+    await userEvent.click(screen.getByRole('button', { name: 'Recarregar' }))
+    expect(await screen.findByDisplayValue('Versão nova')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    await screen.findByText('Doses até hoje')
+    expect(sent('PUT')[1]?.headers.get('If-Match')).toBe('"4"')
+  })
+
+  it('delete sends the version captured when the dialog opened and offers a reload on 412', async () => {
+    const { state, sent } = stub()
+    app(`/campanhas/${ID}`)
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+    state.served = newer('Renomeada', 4)
+    act(() => {
+      focusManager.setFocused(false)
+      focusManager.setFocused(true) // focus refetch: the live detail moves ahead
+    })
+    await screen.findByText(/Excluir a campanha Renomeada\?/)
+    const dialog = screen.getByRole('dialog', { name: 'Excluir campanha' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
+    expect(sent('DELETE')[0]?.headers.get('If-Match')).toBe('"3"')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Esta campanha foi alterada por outra pessoa. Recarregue.')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Recarregar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
 

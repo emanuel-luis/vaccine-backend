@@ -60,11 +60,13 @@ function throttle(fn: () => void, ms: number) {
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const t = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => {
+    const done = () => {
       clearTimeout(t)
+      signal.removeEventListener('abort', done)
       resolve()
-    })
+    }
+    const t = setTimeout(done, ms)
+    signal.addEventListener('abort', done, { once: true })
   })
 }
 
@@ -93,11 +95,14 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
     if (!token || !visible) return
     const ctl = new AbortController()
     const refresh = throttle(() => void qc.invalidateQueries({ queryKey: ['live'] }), INVALIDATE_EVERY_MS)
-    const ticker = throttle(() => {
+    const recompute = () => {
       const cutoff = Date.now() - WINDOW_MS
       entries.current = entries.current.filter((e) => e.at >= cutoff)
       setRecentDoses(entries.current.reduce((s, e) => s + e.total, 0))
-    }, TICKER_EVERY_MS)
+    }
+    const ticker = throttle(recompute, TICKER_EVERY_MS)
+    // Keeps the window sliding when no event arrives, so the count decays to 0.
+    const decay = setInterval(recompute, TICKER_EVERY_MS)
     let attempt = 0
 
     const onEvent = (type: string | undefined, data: string) => {
@@ -155,6 +160,7 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
       ctl.abort()
       refresh.cancel()
       ticker.cancel()
+      clearInterval(decay)
     }
   }, [token, visible, region, apiBaseUrl, qc])
 
