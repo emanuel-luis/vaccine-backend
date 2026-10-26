@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -141,6 +141,31 @@ describe('Execuções', () => {
     expect(await screen.findByText('Já existe uma execução em andamento')).toBeInTheDocument()
   })
 
+  it('clears the 409 message once the active job finishes', async () => {
+    let list: Job[] = [job({ status: 'running', finishedAt: null })]
+    let post = false
+    const s = stub((c) => {
+      if (c.url.pathname !== '/api/v1/admin/jobs') return undefined
+      if (c.method === 'POST') return json({ status: 409, code: 'job_already_active' }, { status: 409 })
+      return json(envelope(post ? list : []))
+    })
+    renderApp(
+      <LiveProvider scope={{ level: 'BR' }}>
+        <DadosExecucoes />
+      </LiveProvider>,
+    )
+    await s.waitStream()
+    const button = await screen.findByRole('button', { name: 'Reconciliar' })
+    post = true // the list a moment later shows the job that caused the 409
+    await userEvent.click(button)
+    expect(await screen.findByText('Já existe uma execução em andamento')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reconciliar' })).toBeDisabled())
+    list = [job()]
+    await s.push('job', { jobId: ID, kind: 'dbt-build', status: 'succeeded' })
+    await waitFor(() => expect(screen.queryByText('Já existe uma execução em andamento')).toBeNull())
+    expect(screen.getByRole('button', { name: 'Reconciliar' })).toBeEnabled()
+  })
+
   it('disables the buttons while a job is queued or running and links rows to the detail', async () => {
     stub((c) => (c.url.pathname === '/api/v1/admin/jobs' ? json(envelope([job({ status: 'running', finishedAt: null })])) : undefined))
     renderApp(<DadosExecucoes />)
@@ -183,10 +208,13 @@ describe('Execução: registro ao vivo', () => {
   }
   const event = (seq: number, extra: object = {}) => ({ jobId: ID, kind: 'dbt-build', status: 'running', seq, level: 'info', message: `linha ${seq}`, ...extra })
 
-  it('is an aria-live log, styles levels, appends in order and ignores seqs already seen', async () => {
+  it('keeps the log quiet, announces only the job status, styles levels, appends in order and ignores seqs already seen', async () => {
     await open()
     const log = screen.getByRole('log')
-    expect(log).toHaveAttribute('aria-live', 'polite')
+    expect(log).toHaveAttribute('aria-live', 'off')
+    expect(log).toHaveAttribute('aria-busy', 'false')
+    expect(screen.getAllByRole('status').map((e) => e.textContent)).toContain('Situação da execução: Em execução')
+    expect(within(log).queryByRole('status')).toBeNull()
     expect(within(log).getByText('AVISO')).toBeInTheDocument()
     stored.push(line(3))
     await s.push('job', event(3))
@@ -233,6 +261,39 @@ describe('Execução: registro ao vivo', () => {
     expect(logLines()).toContain('linha 4')
     expect(setTop).not.toHaveBeenCalled()
     vi.restoreAllMocks()
+  })
+
+  it('resyncs on a status-change event of the open job and ignores other jobs', async () => {
+    await open()
+    stored.push(line(3))
+    const before = afterSeqs().length
+    await s.push('job', { jobId: '33333333-3333-3333-3333-333333333333', kind: 'dbt-build', status: 'succeeded' })
+    await s.push('job', event(9, { jobId: '33333333-3333-3333-3333-333333333333' }))
+    expect(afterSeqs().length).toBe(before)
+    expect(logLines()).toEqual(['linha 1', 'linha 2'])
+    await s.push('job', { jobId: ID, kind: 'dbt-build', status: 'succeeded' })
+    await waitFor(() => expect(logLines()).toContain('linha 3'))
+    expect(afterSeqs().at(-1)).toBe('2')
+  })
+
+  it('fetches a line that may be truncated (>= 500 chars) instead of appending the SSE text', async () => {
+    await open()
+    const full = 'x'.repeat(800)
+    stored.push({ ...line(3), message: full, loggedAt: '2026-10-26T10:00:09Z' })
+    await s.push('job', event(3, { message: full.slice(0, 500) }))
+    await waitFor(() => expect(screen.getByText(full)).toBeInTheDocument())
+    expect(screen.queryByText('x'.repeat(500))).toBeNull()
+    expect(afterSeqs().at(-1)).toBe('2')
+    expect(document.querySelector('time[datetime="2026-10-26T10:00:09Z"]')).not.toBeNull()
+  })
+
+  it('unsubscribes from the stream on unmount', async () => {
+    await open()
+    cleanup()
+    const before = afterSeqs().length
+    await s.push('job', { jobId: ID, kind: 'dbt-build', status: 'succeeded' })
+    await s.push('ready', {})
+    expect(afterSeqs().length).toBe(before)
   })
 
   it('refetches the job on a status-change event', async () => {
