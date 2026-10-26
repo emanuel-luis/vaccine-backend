@@ -62,7 +62,10 @@ class ApplicationIT {
 
     @Test
     void dosesByStateMonthFiltersByRangeStateAndVaccine() throws Exception {
-        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2024-01").param("to", "2024-12"))
+        mvc.perform(get("/api/v1/doses/by-state-month")
+                        .with(Auth.reader())
+                        .param("from", "2024-01")
+                        .param("to", "2024-12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.source").value("marts.mart_doses_by_state_month"))
                 .andExpect(jsonPath("$.meta.synthetic").value(true))
@@ -75,6 +78,7 @@ class ApplicationIT {
                 .andExpect(jsonPath("$.data[0].doses").value(12));
 
         mvc.perform(get("/api/v1/doses/by-state-month")
+                        .with(Auth.reader())
                         .param("from", "2024-01")
                         .param("to", "2025-12")
                         .param("state", "MA")
@@ -87,6 +91,7 @@ class ApplicationIT {
     @Test
     void dosesByAgeBandReturnsSexAndAge() throws Exception {
         mvc.perform(get("/api/v1/doses/by-age-band")
+                        .with(Auth.reader())
                         .param("from", "2024-03")
                         .param("to", "2024-03")
                         .param("state", "MA"))
@@ -100,10 +105,13 @@ class ApplicationIT {
 
     @Test
     void coverageIsFilteredByYear() throws Exception {
-        mvc.perform(get("/api/v1/coverage"))
+        mvc.perform(get("/api/v1/coverage").with(Auth.reader()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.count").value(2));
-        mvc.perform(get("/api/v1/coverage").param("year", "2025").param("state", "MA"))
+        mvc.perform(get("/api/v1/coverage")
+                        .with(Auth.reader())
+                        .param("year", "2025")
+                        .param("state", "MA"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.count").value(1))
                 .andExpect(jsonPath("$.data[0].coveragePct").value(83.33))
@@ -113,7 +121,7 @@ class ApplicationIT {
 
     @Test
     void healthUnitHistoryShowsEveryVersion() throws Exception {
-        mvc.perform(get("/api/v1/health-units/0000264/history"))
+        mvc.perform(get("/api/v1/health-units/0000264/history").with(Auth.reader()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.synthetic").value(false))
                 .andExpect(jsonPath("$.data.length()").value(2))
@@ -122,14 +130,14 @@ class ApplicationIT {
                 .andExpect(jsonPath("$.data[1].isCurrent").value(true))
                 .andExpect(jsonPath("$.data[1].municipalityName").value("São Luís"));
 
-        mvc.perform(get("/api/v1/health-units/9999999/history"))
+        mvc.perform(get("/api/v1/health-units/9999999/history").with(Auth.reader()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
     @Test
     void latestRunPerCommandWithTableCounts() throws Exception {
-        mvc.perform(get("/api/v1/runs/latest"))
+        mvc.perform(get("/api/v1/runs/latest").with(Auth.reader()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.count").value(2))
                 .andExpect(jsonPath("$.data[0].command").value("generate"))
@@ -141,7 +149,7 @@ class ApplicationIT {
     @Test
     void missingMartsAnswer503WithAHint() throws Exception {
         jdbc.execute("DROP SCHEMA marts CASCADE");
-        mvc.perform(get("/api/v1/coverage"))
+        mvc.perform(get("/api/v1/coverage").with(Auth.reader()))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(header().string("Retry-After", "30"))
@@ -149,21 +157,35 @@ class ApplicationIT {
     }
 
     @Test
-    void doseIngestIsNotMappedUnlessEnabled() throws Exception {
+    void everyDataEndpointNeedsAToken() throws Exception {
+        mvc.perform(get("/api/v1/coverage"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("unauthorized"));
         mvc.perform(post("/api/v1/doses").contentType("application/json").content("{}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/doses/by-state-month").with(Auth.ingest()).param("from", "2024-01"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("forbidden"));
     }
 
     @Test
     void invalidParametersAnswer400() throws Exception {
-        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2024-13").param("to", "2024-12"))
+        mvc.perform(get("/api/v1/doses/by-state-month")
+                        .with(Auth.reader())
+                        .param("from", "2024-13")
+                        .param("to", "2024-12"))
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/doses/by-state-month")
+                        .with(Auth.reader())
                         .param("from", "2024-01")
                         .param("to", "2024-12")
                         .param("state", "ma"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/doses/by-state-month").param("from", "2020-01").param("to", "2024-12"))
+        mvc.perform(get("/api/v1/doses/by-state-month")
+                        .with(Auth.reader())
+                        .param("from", "2020-01")
+                        .param("to", "2024-12"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail", containsString("36 months")));
     }

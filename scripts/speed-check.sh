@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Speed-layer check against the running stack (run `make demo` first, with VACCINE_INGEST_ENABLED=true
-# in .env): posts 3 doses, requires "doses today" to grow by 3, replays one POST, then runs
-# `make dbt-build` and `make reconcile` and requires the total to stay the same with nothing pending.
-# Usage: scripts/speed-check.sh [base_url]
+# Speed-layer check against the running stack (run `make demo` first): posts 3 doses (token of
+# vaccine-simulator), requires "doses today" to grow by 3 (token of vaccine-smoke), replays one
+# POST, then runs `make dbt-build` and `make reconcile` and requires the total to stay the same with
+# nothing pending. Secrets come from .env and are never printed.
+# Usage: scripts/speed-check.sh [base_url]   (KEYCLOAK_URL overrides http://localhost:8180)
 set -euo pipefail
 base="${1:-http://localhost:8080}"
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/lib-token.sh
+. scripts/lib-token.sh
+load_env
+reader="$(token vaccine-smoke "${SMOKE_CLIENT_SECRET:-}")"
+writer="$(token vaccine-simulator "${SIMULATOR_CLIENT_SECRET:-}")"
 
 # psql inside the postgres container; credentials come from the container's own environment.
 psql_q() {
@@ -52,7 +58,7 @@ echo "unit $cnes, $vaccine $dose, birth date $birth, today $today"
 
 mapfile -t persons < <(psql_q <<<'select gen_random_uuid() from generate_series(1, 3);')
 
-summary() { curl -fsS "$base/api/v1/dashboard/summary?from=$today&to=$today"; }
+summary() { curl -fsS -H "Authorization: Bearer $reader" "$base/api/v1/dashboard/summary?from=$today&to=$today"; }
 today_doses() { summary | jget data.dosesToday; }
 
 before="$(today_doses)"
@@ -63,7 +69,7 @@ for i in 0 1 2; do
   bodies[i]="$(printf '{"personId":"%s","birthDate":"%s","sex":"F","cnesCode":"%s","vaccineCode":"%s","doseLabel":"%s","administeredAt":"%s"}' \
     "${persons[i]}" "$birth" "$cnes" "$vaccine" "$dose" "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
   status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/api/v1/doses" \
-    -H 'Content-Type: application/json' -H "Idempotency-Key: ${keys[i]}" -d "${bodies[i]}")"
+    -H "Authorization: Bearer $writer" -H 'Content-Type: application/json' -H "Idempotency-Key: ${keys[i]}" -d "${bodies[i]}")"
   [[ "$status" == 201 ]] || fail "POST /api/v1/doses #$((i + 1)) answered $status, expected 201"
 done
 echo "ok   3 doses accepted (201)"
@@ -75,13 +81,15 @@ pending="$(summary | jget data.liveDosesPending)"
 echo "ok   dosesToday $before -> $after, liveDosesPending $pending"
 
 status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/api/v1/doses" \
-  -H 'Content-Type: application/json' -H "Idempotency-Key: ${keys[0]}" -d "${bodies[0]}")"
+  -H "Authorization: Bearer $writer" -H 'Content-Type: application/json' -H "Idempotency-Key: ${keys[0]}" -d "${bodies[0]}")"
 [[ "$status" == 200 ]] || fail "replayed POST answered $status, expected 200"
 [[ "$(today_doses)" == "$after" ]] || fail "a replayed POST changed dosesToday"
 echo "ok   replay answered 200 without a change"
 
 make dbt-build
 make reconcile
+# The access token lives 5 minutes; a long dbt build can outlast it.
+reader="$(token vaccine-smoke "${SMOKE_CLIENT_SECRET:-}")"
 
 final="$(today_doses)"
 [[ "$final" == "$after" ]] || fail "dosesToday changed across the batch: $after -> $final"

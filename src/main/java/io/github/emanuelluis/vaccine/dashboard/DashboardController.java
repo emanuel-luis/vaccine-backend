@@ -2,7 +2,7 @@ package io.github.emanuelluis.vaccine.dashboard;
 
 import io.github.emanuelluis.vaccine.dashboard.MergedDosesRepository.Filters;
 import io.github.emanuelluis.vaccine.dashboard.MergedDosesRepository.TimeseriesPoint;
-import io.github.emanuelluis.vaccine.region.RegionFilter;
+import io.github.emanuelluis.vaccine.security.ScopeGuard;
 import io.github.emanuelluis.vaccine.web.ApiItem;
 import io.github.emanuelluis.vaccine.web.ApiResponse;
 import io.github.emanuelluis.vaccine.web.InvalidRequestException;
@@ -14,6 +14,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,6 +45,7 @@ public class DashboardController {
 
     @GetMapping("/summary")
     public ApiItem<SummaryData> summary(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String region,
@@ -51,13 +54,15 @@ public class DashboardController {
             @RequestParam(required = false) @Min(0) @Max(6) Integer ageBand) {
         checkRange(from, to);
         LocalDate today = LocalDate.now(clock.withZone(LOCAL_ZONE));
-        var s = repository.summary(from, to, today, new Filters(RegionFilter.parse(region), vaccine, dose, ageBand));
+        var s = repository.summary(
+                from, to, today, new Filters(ScopeGuard.filter(jwt, region), vaccine, dose, ageBand));
         var data = new SummaryData(s.dosesInPeriod(), s.dosesToday(), today, s.batchGeneration(), s.liveDosesPending());
         return ApiItem.of(MergedDosesRepository.SOURCE, true, ApiResponse.LAYER_MERGED, s.batchGeneration(), data);
     }
 
     @GetMapping("/doses/timeseries")
     public ApiResponse<TimeseriesPoint> timeseries(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "day") @Pattern(regexp = "day|week|month") String granularity,
@@ -67,7 +72,7 @@ public class DashboardController {
             @RequestParam(required = false) @Min(0) @Max(6) Integer ageBand) {
         checkRange(from, to);
         var series = repository.timeseries(
-                from, to, granularity, new Filters(RegionFilter.parse(region), vaccine, dose, ageBand));
+                from, to, granularity, new Filters(ScopeGuard.filter(jwt, region), vaccine, dose, ageBand));
         return ApiResponse.merged(MergedDosesRepository.SOURCE, true, series.batchGeneration(), series.points());
     }
 

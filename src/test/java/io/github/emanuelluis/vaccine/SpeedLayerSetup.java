@@ -15,13 +15,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Shared setup of the speed-layer ITs: ingest enabled, fixed clock (2026-10-25T15:00Z, which is
+ * Shared setup of the speed-layer ITs: fixed clock (2026-10-25T15:00Z, which is
  * 12:00 on 2026-10-25 in America/Sao_Paulo), Postgres in a container. Identical annotations let
  * the ITs share one Spring context and one container.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest(properties = "vaccine.ingest.enabled=true")
+@SpringBootTest
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, SpeedLayerSetup.FixedClockConfiguration.class})
 public @interface SpeedLayerSetup {

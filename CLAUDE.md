@@ -11,9 +11,10 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   (pytest incl. Testcontainers, `-m "not external"`)
 - `make up` / `make down` (compose project `vaccine-warehouse`), `make load-reference`,
   `make generate` (`ROWS`, `SEED`), `make dbt-build`, `make reconcile`, `make smoke`,
-  `make speed-check`, `make demo` (up + load-reference + generate + dbt build + reconcile + smoke)
-- `make speed-check` posts live doses, so the API needs `VACCINE_INGEST_ENABLED=true` in `.env`
-  (off by default; only CI turns it on until authentication lands in PR2)
+  `make speed-check`, `make openapi` (rewrites `docs/api/openapi.json`, no Docker),
+  `make demo` (up + load-reference + generate + dbt build + reconcile + smoke)
+- `make smoke` and `make speed-check` get tokens from Keycloak (`vaccine-smoke`,
+  `vaccine-simulator`) with the secrets in `.env`; the demo users share `KC_DEMO_PASSWORD`
 - ELT and dbt by hand: `uv run --project elt vaccine-elt ...`,
   `uv run --project elt dbt <cmd> --project-dir dbt --profiles-dir dbt` with libpq `PG*` env set
   (the Makefile maps them from `.env`)
@@ -21,7 +22,7 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 
 ## Repo map
 - `src/main/java/io/github/emanuelluis/vaccine/`: `analytics/` (doses, coverage), `units/`
-  (SCD2 history), `runs/` (ops runs), `ingest/` (POST /api/v1/doses), `live/` (LISTEN hub, SSE
+  (SCD2 history), `runs/` (ops runs), `ingest/` (POST /api/v1/doses), `security/` (resource server, roles, `ScopeGuard`, `/me`), `live/` (LISTEN hub, SSE
   stream), `dashboard/` (merged batch + live queries), `web/` (envelope, problem details).
   `JdbcClient` + records, no JPA.
 - `src/main/resources/db/migration/`: Flyway migrations (history in schema `ops`)
@@ -34,6 +35,8 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - `elt/src/vaccine_elt/generator/`: seeded synthetic events, lots, receipts (`generate`)
 - `scripts/smoke.sh`: endpoint smoke test (`make smoke`, CI end-to-end job);
   `scripts/speed-check.sh`: live ingest, dbt absorption and reconcile (`make speed-check`)
+- `keycloak/realm-vaccine.json`: realm `vaccine` (roles, clients, demo users, claims), imported by
+  compose with `${ENV}` placeholders; `docs/api/openapi.json`: committed spec checked by `OpenApiSpecIT`
 - `compose.yaml`, `Dockerfile`, `Makefile`, `.github/workflows/ci.yml`
 
 ## Invariants
@@ -53,6 +56,10 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - The API reads `marts`, `ops` and `live`. It writes only `raw.live_dose` + `live.dose_daily` (one
   transaction per dose, generation protocol) and `ops.ingest_reject`. A missing mart answers 503,
   never 500. No endpoint returns an individual dose.
+- Every data endpoint applies the caller's region scope (token claim `region_scope`) through
+  `ScopeGuard` and `RegionFilter`; repositories take no raw region parameter. URL roles live in
+  `SecurityConfig` only; everything not listed is denied. Small-cell suppression arrives later in
+  the API, never in marts.
 - Live doses are absorbed by dbt only through `ops.close_live_generation()` (called by the
   `on-run-start` hook of `dbt run` and `dbt build`); serving adds `live.dose_daily` rows with
   `generation > batch_generation` of the mart it reads, in the same statement. `fact_vaccination`
