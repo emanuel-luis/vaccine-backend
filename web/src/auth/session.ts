@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { unwrap, useApi } from '../api/client'
+import { unwrapData, useApi } from '../api/client'
 import { parseClaims, type Role, type Scope } from './claims'
 
 export interface Session {
@@ -22,7 +22,7 @@ export function useSession(): Session {
 
   const me = useQuery({
     queryKey: ['me'],
-    queryFn: async () => unwrap(await api.GET('/api/v1/me')).data,
+    queryFn: async () => unwrapData(await api.GET('/api/v1/me')),
     enabled: auth.isAuthenticated,
   }).data
 

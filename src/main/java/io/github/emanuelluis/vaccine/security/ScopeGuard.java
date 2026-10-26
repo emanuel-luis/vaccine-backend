@@ -56,6 +56,18 @@ public final class ScopeGuard {
         return new RegionFilter(state, null);
     }
 
+    /**
+     * Areas of one state (its municipalities): the state must lie inside the scope, or hold the
+     * caller's municipality, whose only area is then returned.
+     */
+    public static RegionFilter stateAreas(Jwt jwt, String state) {
+        RegionScope scope = scope(jwt);
+        if (scope.level() != Level.BR && !state.equals(scope.state())) {
+            throw outOfScope("state " + state + " is outside your scope");
+        }
+        return new RegionFilter(state, scope.municipalityCode());
+    }
+
     /** 403 unless a row of this state and municipality is inside the caller's scope. */
     public static void requireCovers(Jwt jwt, String state, int municipalityCode) {
         if (!scope(jwt).filter().covers(state, municipalityCode)) {

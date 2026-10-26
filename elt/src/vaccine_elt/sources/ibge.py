@@ -3,6 +3,7 @@ municipality, sex and single year of age 0-6 (SIDRA table 9514)."""
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -31,6 +32,19 @@ CENSUS_URL_TEMPLATE = (
 CENSUS_DOCS = "https://sidra.ibge.gov.br/tabela/9514"
 CENSUS_SEX_CODES = {"M": 4, "F": 5}  # SIDRA classification 2 (Sexo): 4 = Homens, 5 = Mulheres
 CENSUS_COLUMNS = ["census_year", "municipality_code", "sex", "age_years", "population"]
+
+# Malhas territoriais API v3, quality "minima" (simplified polygons, enough for choropleths).
+GEO_DOCS = "https://servicodados.ibge.gov.br/api/docs/malhas?versao=3"
+GEO_UF_URL = (
+    "https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR"
+    "?intrarregiao=UF&qualidade=minima&formato=application/vnd.geo+json"
+)
+GEO_MUNICIPALITIES_URL_TEMPLATE = (
+    "https://servicodados.ibge.gov.br/api/v3/malhas/estados/{state_code}"
+    "?intrarregiao=municipio&qualidade=minima&formato=application/vnd.geo+json"
+)
+GEO_COLUMNS = ["codarea", "geometry"]
+GEO_DECIMALS = 4  # about 11 m; the budget in docs/data-sources.md decides if it must drop to 3
 
 _AGE_PATTERN = re.compile(r"^(\d+) anos?$")
 
@@ -99,3 +113,31 @@ def normalize_census(payload: list[Mapping[str, str]], sex: str) -> list[Row]:
 
 def sort_census(rows: Iterable[Row]) -> list[Row]:
     return sorted(rows, key=lambda r: (int(r["municipality_code"]), r["sex"], int(r["age_years"])))
+
+
+def _round_coordinates(node: Any, decimals: int) -> Any:
+    if isinstance(node, list):
+        return [_round_coordinates(child, decimals) for child in node]
+    return round(node, decimals) + 0.0  # + 0.0 turns -0.0 into 0.0
+
+
+def normalize_geojson(
+    payload: Mapping[str, Any], decimals: int = GEO_DECIMALS
+) -> tuple[bytes, int]:
+    """Reduce an IBGE malha to features of `codarea` (string) + geometry, sorted by `codarea`,
+    coordinates rounded; return compact JSON with sorted keys and the feature count."""
+    features: list[dict[str, Any]] = [
+        {
+            "type": "Feature",
+            "properties": {"codarea": str(feature["properties"]["codarea"])},
+            "geometry": {
+                "type": feature["geometry"]["type"],
+                "coordinates": _round_coordinates(feature["geometry"]["coordinates"], decimals),
+            },
+        }
+        for feature in payload["features"]
+    ]
+    features.sort(key=lambda feature: feature["properties"]["codarea"])
+    document = {"type": "FeatureCollection", "features": features}
+    text = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return text.encode("utf-8"), len(features)

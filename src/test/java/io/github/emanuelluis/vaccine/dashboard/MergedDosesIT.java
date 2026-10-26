@@ -75,6 +75,8 @@ class MergedDosesIT {
                 .andExpect(jsonPath("$.data.dosesInPeriod").value(45))
                 .andExpect(jsonPath("$.data.dosesToday").value(0))
                 .andExpect(jsonPath("$.data.today").value("2026-10-25"))
+                .andExpect(jsonPath("$.data.suppressedFields").isEmpty())
+                .andExpect(jsonPath("$.meta.suppressedCells").value(0))
                 .andExpect(jsonPath("$.data.batchGeneration").value(0))
                 .andExpect(jsonPath("$.meta.layer").value("merged"));
 
@@ -112,6 +114,7 @@ class MergedDosesIT {
                 .andExpect(jsonPath("$.meta.count").value(3))
                 .andExpect(jsonPath("$.data[0].periodStart").value("2026-10-20"))
                 .andExpect(jsonPath("$.data[0].doses").value(10))
+                .andExpect(jsonPath("$.data[0].suppressed").value(false))
                 .andExpect(jsonPath("$.data[1].periodStart").value("2026-10-24"))
                 .andExpect(jsonPath("$.data[1].doses").value(35))
                 .andExpect(jsonPath("$.data[2].periodStart").value("2026-10-25"))

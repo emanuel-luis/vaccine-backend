@@ -10,7 +10,11 @@ create table marts.dim_municipality (
 );
 insert into marts.dim_municipality values
     ('00000000-0000-0000-0000-000000000000', 0, 0, 'Unknown', 0, 'NA', 'Unknown', 0, 'Unknown'),
-    ('11111111-1111-1111-1111-111111111111', 2111300, 211130, 'São Luís', 21, 'MA', 'Maranhão', 2, 'Nordeste');
+    ('11111111-1111-1111-1111-111111111111', 2111300, 211130, 'São Luís', 21, 'MA', 'Maranhão', 2, 'Nordeste'),
+    (gen_random_uuid(), 2105302, 210530, 'Imperatriz', 21, 'MA', 'Maranhão', 2, 'Nordeste'),
+    (gen_random_uuid(), 2927408, 292740, 'Salvador', 29, 'BA', 'Bahia', 2, 'Nordeste'),
+    (gen_random_uuid(), 2910800, 291080, 'Feira de Santana', 29, 'BA', 'Bahia', 2, 'Nordeste'),
+    (gen_random_uuid(), 3550308, 355030, 'São Paulo', 35, 'SP', 'São Paulo', 3, 'Sudeste');
 
 create table marts.dim_health_unit (
     health_unit_key uuid, cnes_code text, unit_name text, neighborhood text, municipality_code integer,
@@ -27,6 +31,15 @@ insert into marts.dim_health_unit values
     ('22222222-2222-2222-2222-222222222223', '0000001', 'USF INATIVA', 'CENTRO', 2111300, false,
      null, null, null, null, null, '2015-01-01', '9999-12-31', true),
     ('22222222-2222-2222-2222-222222222224', '0000002', 'USF SEM MUNICIPIO', 'CENTRO', 0, true,
+     null, null, null, null, null, '2015-01-01', '9999-12-31', true),
+    (gen_random_uuid(), '0000100', 'UBS SALVADOR A', 'CENTRO', 2927408, true,
+     'RUA B - 1', 2, 'Centro de saúde / unidade básica', -12.970000, -38.500000,
+     '2015-01-01', '9999-12-31', true),
+    (gen_random_uuid(), '0000101', 'UBS SALVADOR B', 'CENTRO', 2927408, true,
+     null, null, null, null, null, '2015-01-01', '9999-12-31', true),
+    (gen_random_uuid(), '0000102', 'UBS SALVADOR INATIVA', 'CENTRO', 2927408, false,
+     null, null, null, null, null, '2015-01-01', '9999-12-31', true),
+    (gen_random_uuid(), '0000200', 'UBS FEIRA', 'CENTRO', 2910800, true,
      null, null, null, null, null, '2015-01-01', '9999-12-31', true);
 
 create table marts.dim_vaccine (
@@ -60,7 +73,30 @@ create table marts.mart_doses_daily (
 insert into marts.mart_doses_daily values
     ('2026-10-20', 'MA', 2111300, '0000264', 'PENTA', 'D1', 0, 10, 0),
     ('2026-10-24', 'MA', 2111300, '0000264', 'PENTA', 'D2', 0, 5, 0),
-    ('2026-10-24', 'SP', 3550308, '0000999', 'ROTA', 'D1', null, 30, 0);
+    ('2026-10-24', 'SP', 3550308, '0000999', 'ROTA', 'D1', null, 30, 0),
+    -- September rows feed DashboardIT (coverage, map, units, suppression); October stays as above.
+    ('2026-09-10', 'BA', 2927408, '0000100', 'PENTA', 'D3', 0, 40, 0),
+    ('2026-09-10', 'BA', 2927408, '0000100', 'PENTA', 'D3', 1, 10, 0),
+    ('2026-09-11', 'BA', 2927408, '0000100', 'PENTA', 'D3', 3, 7, 0),
+    ('2026-09-11', 'BA', 2927408, '0000101', 'PENTA', 'D3', 0, 3, 0),
+    ('2026-09-12', 'BA', 2910800, '0000200', 'PENTA', 'D3', 0, 4, 0),
+    ('2026-09-12', 'MA', 2105302, '0000300', 'PENTA', 'D3', 0, 6, 0),
+    ('2026-09-12', 'MA', 2111300, '0000264', 'PENTA', 'D3', 0, 2, 0),
+    ('2026-09-13', 'BA', 2927408, '0000100', 'ROTA', 'D2', 0, 5, 0);
+
+-- Coverage denominators (dbt contract: mart_coverage_target_by_municipality); Imperatriz has none,
+-- São Paulo has no row at all.
+create table marts.mart_coverage_target_by_municipality (
+    municipality_code integer, state_abbr char(2), vaccine_code text, dose_label text,
+    target_age_years integer, target_population bigint, sample_fraction numeric,
+    expected_population numeric, numerator_is_synthetic boolean, denominator_source text
+);
+insert into marts.mart_coverage_target_by_municipality values
+    (2927408, 'BA', 'PENTA', 'D3', 1, 10000, 0.01, 100, true, 'IBGE Censo 2022, SIDRA 9514'),
+    (2927408, 'BA', 'ROTA', 'D2', 1, 10000, 0.01, 100, true, 'IBGE Censo 2022, SIDRA 9514'),
+    (2910800, 'BA', 'PENTA', 'D3', 1, 4000, 0.01, 40, true, 'IBGE Censo 2022, SIDRA 9514'),
+    (2105302, 'MA', 'PENTA', 'D3', 1, 0, 0.01, 0, true, 'IBGE Censo 2022, SIDRA 9514'),
+    (2111300, 'MA', 'PENTA', 'D3', 1, 800, 0.01, 8, true, 'IBGE Censo 2022, SIDRA 9514');
 
 create table marts.mart_doses_by_state_month (
     state_abbr char(2), state_name text, region_name text, year_month text, month_start date,

@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from vaccine_elt import csvio
-from vaccine_elt.manifest import Manifest, SourceEntry, sha256_file
+from vaccine_elt.manifest import LicenseStatus, Manifest, SourceEntry, sha256_file
 from vaccine_elt.sources import cnes, ibge
 from vaccine_elt.sources.http import download
 
@@ -47,7 +47,7 @@ def _entry(
     rows: int,
     *,
     id: str,
-    table: str,
+    table: str | None,
     publisher: str,
     source_url: str,
     documentation_url: str,
@@ -57,6 +57,7 @@ def _entry(
     snapshot_date: str,
     transform: str,
     source_last_modified: str | None,
+    license_status: LicenseStatus | None = None,
 ) -> SourceEntry:
     return SourceEntry(
         id=id,
@@ -74,6 +75,7 @@ def _entry(
         rows=rows,
         sha256=sha256_file(path),
         source_last_modified=source_last_modified,
+        license_status=license_status,
     )
 
 
@@ -210,3 +212,57 @@ def convert_legacy_cnes(
     )
     manifest.upsert(entry)
     return entry
+
+
+def _state_abbr_by_code(directory: Path, manifest: Manifest) -> dict[str, str]:
+    """IBGE 2-digit state code -> abbreviation, from the vendored municipalities snapshot."""
+    _, rows = csvio.read_snapshot(directory / manifest.entry("ibge_municipalities").path)
+    return {row["state_code"]: row["state_abbr"] for _, row in rows}
+
+
+def fetch_geo(directory: Path, manifest: Manifest) -> SourceEntry:
+    """The state mesh plus one municipality mesh per state, as normalized GeoJSON snapshots."""
+    states = _state_abbr_by_code(directory, manifest)
+    geo_dir = directory / "geo"
+    retrieved = _now()
+    citation = f"IBGE, Malhas territoriais (API de malhas v3, qualidade mínima), acesso em {retrieved[:10]}."
+    transform = (
+        "Kept only codarea (string) and geometry; features sorted by codarea; coordinates rounded "
+        f"to {ibge.GEO_DECIMALS} decimals; compact JSON with sorted keys, gzip with zero mtime."
+    )
+
+    def snapshot(entry_id: str, url: str, expected: int | None) -> SourceEntry:
+        with tempfile.TemporaryDirectory() as tmp:
+            got = download(url, Path(tmp) / f"{entry_id}.json")
+            payload = json.loads(got.path.read_text(encoding="utf-8"))
+        data, count = ibge.normalize_geojson(payload)
+        if expected is not None and count != expected:
+            raise ValueError(f"{entry_id}: {count} features, expected {expected}")
+        path = geo_dir / f"{entry_id}.geojson.gz"
+        csvio.write_deterministic(path, data)
+        entry = _entry(
+            directory,
+            path,
+            ibge.GEO_COLUMNS,
+            count,
+            id=entry_id,
+            table=None,
+            publisher="IBGE",
+            source_url=url,
+            documentation_url=ibge.GEO_DOCS,
+            license_note=IBGE_LICENSE_NOTE,
+            citation=citation,
+            retrieved_at=retrieved,
+            snapshot_date=retrieved[:10],
+            transform=transform,
+            source_last_modified=got.last_modified,
+            license_status="to_be_confirmed",
+        )
+        manifest.upsert(entry)
+        return entry
+
+    uf = snapshot("ibge_malha_uf", ibge.GEO_UF_URL, len(states))
+    for code, abbr in sorted(states.items()):
+        url = ibge.GEO_MUNICIPALITIES_URL_TEMPLATE.format(state_code=code)
+        snapshot(f"ibge_malha_municipios_{abbr.lower()}", url, None)
+    return uf

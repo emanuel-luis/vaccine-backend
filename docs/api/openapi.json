@@ -57,6 +57,116 @@
         "tags" : [ "analytics-controller" ]
       }
     },
+    "/api/v1/dashboard/doses/by-age-band" : {
+      "get" : {
+        "operationId" : "byAgeBand",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "region",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "vaccine",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9_]{2,20}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dose",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_]{1,10}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAgeBandDoses"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dashboard-controller" ]
+      }
+    },
+    "/api/v1/dashboard/doses/by-vaccine" : {
+      "get" : {
+        "operationId" : "byVaccine",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "region",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ageBand",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 6,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVaccineDoses"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dashboard-controller" ]
+      }
+    },
     "/api/v1/dashboard/doses/timeseries" : {
       "get" : {
         "operationId" : "timeseries",
@@ -125,6 +235,170 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponseTimeseriesPoint"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dashboard-controller" ]
+      }
+    },
+    "/api/v1/dashboard/health-units" : {
+      "get" : {
+        "operationId" : "healthUnits",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "municipality",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "\\d{7}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "vaccine",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9_]{2,20}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dose",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_]{1,10}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ageBand",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 6,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseHealthUnitDoses"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dashboard-controller" ]
+      }
+    },
+    "/api/v1/dashboard/map" : {
+      "get" : {
+        "operationId" : "map",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "level",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "state|municipality"
+          }
+        }, {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z]{2}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "metric",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "coverage|doses"
+          }
+        }, {
+          "in" : "query",
+          "name" : "year",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2030,
+            "minimum" : 2015
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "vaccine",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9_]{2,20}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dose",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_]{1,10}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ageBand",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 6,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapArea"
                 }
               }
             },
@@ -340,6 +614,108 @@
         "tags" : [ "analytics-controller" ]
       }
     },
+    "/api/v1/exports/{dataset}" : {
+      "get" : {
+        "operationId" : "export",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "dataset",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "region",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z]{2}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "municipality",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "\\d{7}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "year",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2030,
+            "minimum" : 2015
+          }
+        }, {
+          "in" : "query",
+          "name" : "vaccine",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9_]{2,20}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "dose",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_]{1,10}"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ageBand",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 6,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "export-controller" ]
+      }
+    },
     "/api/v1/health-units/{cnesCode}/history" : {
       "get" : {
         "operationId" : "history",
@@ -383,6 +759,51 @@
           }
         },
         "tags" : [ "me-controller" ]
+      }
+    },
+    "/api/v1/reference/regions" : {
+      "get" : {
+        "operationId" : "regions",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Z]{2}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRegion"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reference-controller" ]
+      }
+    },
+    "/api/v1/reference/vaccines" : {
+      "get" : {
+        "operationId" : "vaccines",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVaccine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reference-controller" ]
       }
     },
     "/api/v1/runs/latest" : {
@@ -432,6 +853,23 @@
   },
   "components" : {
     "schemas" : {
+      "AgeBandDoses" : {
+        "type" : "object",
+        "properties" : {
+          "ageBandYears" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "doses" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "suppressed" ]
+      },
       "ApiItemDoseAccepted" : {
         "type" : "object",
         "properties" : {
@@ -461,6 +899,21 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/SummaryData"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseAgeBandDoses" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AgeBandDoses"
+            }
           },
           "meta" : {
             "$ref" : "#/components/schemas/Meta"
@@ -498,6 +951,21 @@
         },
         "required" : [ "data", "meta" ]
       },
+      "ApiResponseHealthUnitDoses" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HealthUnitDoses"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
       "ApiResponseHealthUnitVersion" : {
         "type" : "object",
         "properties" : {
@@ -505,6 +973,36 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/HealthUnitVersion"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseMapArea" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MapArea"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseRegion" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Region"
             }
           },
           "meta" : {
@@ -550,6 +1048,36 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/TimeseriesPoint"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseVaccine" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Vaccine"
+            }
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          }
+        },
+        "required" : [ "data", "meta" ]
+      },
+      "ApiResponseVaccineDoses" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/VaccineDoses"
             }
           },
           "meta" : {
@@ -676,6 +1204,31 @@
         },
         "required" : [ "doseLabel", "doses", "monthStart", "regionName", "stateAbbr", "stateName", "vaccineCode", "yearMonth" ]
       },
+      "HealthUnitDoses" : {
+        "type" : "object",
+        "properties" : {
+          "cnesCode" : {
+            "type" : "string"
+          },
+          "doses" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "latitude" : {
+            "type" : [ "number", "null" ]
+          },
+          "longitude" : {
+            "type" : [ "number", "null" ]
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          },
+          "unitName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cnesCode", "suppressed", "unitName" ]
+      },
       "HealthUnitVersion" : {
         "type" : "object",
         "properties" : {
@@ -731,6 +1284,37 @@
         },
         "required" : [ "cnesCode", "isActive", "isCurrent", "municipalityCode", "municipalityName", "stateAbbr", "validFrom", "validTo" ]
       },
+      "MapArea" : {
+        "type" : "object",
+        "properties" : {
+          "abbr" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "denominator" : {
+            "type" : [ "number", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "numerator" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          },
+          "value" : {
+            "type" : [ "number", "null" ]
+          }
+        },
+        "required" : [ "code", "name", "suppressed" ]
+      },
       "Me" : {
         "type" : "object",
         "properties" : {
@@ -782,6 +1366,24 @@
           }
         },
         "required" : [ "count", "layer", "source", "suppressedCells", "synthetic" ]
+      },
+      "Region" : {
+        "type" : "object",
+        "properties" : {
+          "abbr" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "level" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "level", "name" ]
       },
       "Run" : {
         "type" : "object",
@@ -905,23 +1507,29 @@
             "format" : "int64"
           },
           "dosesInPeriod" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           },
           "dosesToday" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           },
           "liveDosesPending" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
+          },
+          "suppressedFields" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           },
           "today" : {
             "type" : "string",
             "format" : "date"
           }
         },
-        "required" : [ "batchGeneration", "dosesInPeriod", "dosesToday", "liveDosesPending", "today" ]
+        "required" : [ "batchGeneration", "suppressedFields", "today" ]
       },
       "TableLoad" : {
         "type" : "object",
@@ -951,15 +1559,66 @@
         "type" : "object",
         "properties" : {
           "doses" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           },
           "periodStart" : {
             "type" : "string",
             "format" : "date"
+          },
+          "suppressed" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "doses", "periodStart" ]
+        "required" : [ "periodStart", "suppressed" ]
+      },
+      "Vaccine" : {
+        "type" : "object",
+        "properties" : {
+          "doseLabel" : {
+            "type" : "string"
+          },
+          "doseNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isCoverageIndicator" : {
+            "type" : "boolean"
+          },
+          "targetAgeYears" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          },
+          "vaccineName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "doseLabel", "doseNumber", "isCoverageIndicator", "vaccineCode", "vaccineName" ]
+      },
+      "VaccineDoses" : {
+        "type" : "object",
+        "properties" : {
+          "doseLabel" : {
+            "type" : "string"
+          },
+          "doses" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          },
+          "vaccineCode" : {
+            "type" : "string"
+          },
+          "vaccineName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "doseLabel", "suppressed", "vaccineCode", "vaccineName" ]
       }
     },
     "securitySchemes" : {

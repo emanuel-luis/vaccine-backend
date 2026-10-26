@@ -20,7 +20,7 @@ public record ApiResponse<T>(List<T> data, Meta meta) {
      * @param count number of rows in {@code data}
      * @param layer {@code batch} (marts only) or {@code merged} (marts plus the live aggregate)
      * @param batchGeneration generation the marts absorbed, null when it does not apply
-     * @param suppressedCells cells hidden by small-number suppression (0 until PR2+)
+     * @param suppressedCells cells hidden by small-number suppression (small-number suppression)
      */
     public record Meta(
             String source,
@@ -35,6 +35,12 @@ public record ApiResponse<T>(List<T> data, Meta meta) {
     }
 
     public static <T> ApiResponse<T> merged(String source, boolean synthetic, long batchGeneration, List<T> data) {
-        return new ApiResponse<>(data, new Meta(source, synthetic, data.size(), LAYER_MERGED, batchGeneration, 0));
+        return merged(source, synthetic, batchGeneration, data, 0);
+    }
+
+    public static <T> ApiResponse<T> merged(
+            String source, boolean synthetic, long batchGeneration, List<T> data, int suppressedCells) {
+        return new ApiResponse<>(
+                data, new Meta(source, synthetic, data.size(), LAYER_MERGED, batchGeneration, suppressedCells));
     }
 }

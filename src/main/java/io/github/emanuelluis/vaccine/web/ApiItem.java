@@ -9,6 +9,11 @@ package io.github.emanuelluis.vaccine.web;
 public record ApiItem<T>(T data, ApiResponse.Meta meta) {
 
     public static <T> ApiItem<T> of(String source, boolean synthetic, String layer, Long batchGeneration, T data) {
-        return new ApiItem<>(data, new ApiResponse.Meta(source, synthetic, 1, layer, batchGeneration, 0));
+        return of(source, synthetic, layer, batchGeneration, 0, data);
+    }
+
+    public static <T> ApiItem<T> of(
+            String source, boolean synthetic, String layer, Long batchGeneration, int suppressedCells, T data) {
+        return new ApiItem<>(data, new ApiResponse.Meta(source, synthetic, 1, layer, batchGeneration, suppressedCells));
     }
 }

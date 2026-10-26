@@ -156,6 +156,29 @@ calendar years.
 The official indicator divides by live births (SINASC). This warehouse uses a constant census
 denominator scaled to the synthetic sample, so `coverage_pct` shows the method, not real coverage.
 
+`mart_coverage_target_by_municipality`: unique on (`municipality_code`, `vaccine_code`,
+`dose_label`). The coverage denominator per municipality, one row per municipality (Unknown
+excluded) and coverage-indicator dose, zeros included. It does not depend on the year: the API
+divides doses by `expected_population` for any year, live-only years included.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `municipality_code` | int | 7-digit IBGE code |
+| `state_abbr` | char(2) | |
+| `vaccine_code` | text | |
+| `dose_label` | text | |
+| `target_age_years` | int | age cohort the indicator measures |
+| `target_population` | bigint | Censo 2022 population of that age in the municipality, both sexes; 0 without census rows |
+| `sample_fraction` | numeric | same value as in `mart_coverage_by_state` (latest succeeded `generate` run) |
+| `expected_population` | numeric | `target_population * sample_fraction` |
+| `numerator_is_synthetic` | boolean | always true |
+| `denominator_source` | text | `IBGE Censo 2022, SIDRA 9514` |
+
+Per state, `sum(target_population)` equals `mart_coverage_by_state.target_population` and
+`sum(expected_population)` equals its `expected_population`; the singular test
+`coverage_target_sums_to_state` checks it. Boa Esperança do Norte (MT, `5101837`, created after
+Censo 2022) has no census rows, so its denominator is 0.
+
 ## Synthetic events
 
 `vaccine-elt generate --rows N --seed S --start D --end D` writes `raw.vaccination_event`,
@@ -260,6 +283,13 @@ Without a token every endpoint except health, `/v3/api-docs` and Swagger UI answ
 | `GET /api/v1/me` | P G A | none | the token: username, name, roles, scope `{level, state, municipalityCode, label}` |
 | `GET /api/v1/dashboard/summary` | P G A | S | `marts.mart_doses_daily` + `live.dose_daily` above `batch_generation` (merged) |
 | `GET /api/v1/dashboard/doses/timeseries` | P G A | S | same merge, grouped by day, week or month |
+| `GET /api/v1/dashboard/doses/by-vaccine` | P G A | S | same merge, grouped by vaccine and dose, joined to `marts.dim_vaccine`; small municipality cells suppressed |
+| `GET /api/v1/dashboard/doses/by-age-band` | P G A | S | same merge, grouped by `age_band_years` (null = Unknown) |
+| `GET /api/v1/dashboard/map` | P G A | S (state level: S>=UF) | same merge per state or municipality of `marts.dim_municipality`; coverage divides by `marts.mart_coverage_target_by_municipality.expected_population` (state = sum), numerator limited to `age_band_years <= coverage_target_age_years` |
+| `GET /api/v1/dashboard/health-units` | P G A | S | `marts.dim_health_unit` (current, active) of one municipality left-joined to the same merge by `cnes_code` |
+| `GET /api/v1/reference/regions` | P G A | S | `marts.dim_municipality` without the Unknown member: states, or the municipalities of `state` |
+| `GET /api/v1/reference/vaccines` | P G A | none | `marts.dim_vaccine` without the Unknown member |
+| `GET /api/v1/exports/{doses-daily,coverage-municipality,health-units}` | G | S | the same queries as the dashboard endpoints, as CSV (decision 53) |
 | `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event`; filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
 | `GET /api/v1/doses/by-state-month` | P G A | S>=UF | `marts.mart_doses_by_state_month` |
 | `GET /api/v1/doses/by-age-band` | P G A | S>=UF | `marts.mart_doses_by_age_band` |

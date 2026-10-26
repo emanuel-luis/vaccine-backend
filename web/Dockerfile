@@ -3,6 +3,8 @@ FROM node:24.22.1-alpine AS build
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
+COPY data/sources/manifest.json /app/data/sources/manifest.json
+COPY data/sources/geo/ /app/data/sources/geo/
 COPY web/ ./
 RUN npm run build
 

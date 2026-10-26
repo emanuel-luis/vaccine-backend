@@ -8,8 +8,11 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Literal
 
 MANIFEST_NAME = "manifest.json"
+LICENSE_STATUSES = ("to_be_confirmed", "confirmed")
+LicenseStatus = Literal["to_be_confirmed", "confirmed"]
 
 
 class ManifestError(Exception):
@@ -20,7 +23,7 @@ class ManifestError(Exception):
 class SourceEntry:
     id: str
     path: str
-    table: str
+    table: str | None  # None for files `load-reference` does not load (geometries)
     publisher: str
     source_url: str
     documentation_url: str
@@ -33,6 +36,13 @@ class SourceEntry:
     rows: int
     sha256: str
     source_last_modified: str | None = None
+    # Written only when set, so entries that predate the field keep their bytes; unset reads as
+    # "to_be_confirmed".
+    license_status: LicenseStatus | None = None
+
+    def __post_init__(self) -> None:
+        if self.license_status is not None and self.license_status not in LICENSE_STATUSES:
+            raise ValueError(f"{self.id}: license_status must be one of {LICENSE_STATUSES}")
 
 
 @dataclass
@@ -73,11 +83,18 @@ def read_manifest(directory: Path) -> Manifest:
         raise ManifestError(f"{path} is malformed: {exc}") from exc
 
 
+def _serialize(entry: SourceEntry) -> dict[str, Any]:
+    item = asdict(entry)
+    if item["license_status"] is None:
+        del item["license_status"]
+    return item
+
+
 def write_manifest(directory: Path, manifest: Manifest) -> Path:
     path = directory / MANIFEST_NAME
     payload = {
         "version": manifest.version,
-        "sources": [asdict(entry) for entry in manifest.sources],
+        "sources": [_serialize(entry) for entry in manifest.sources],
     }
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return path

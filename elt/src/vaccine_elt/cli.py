@@ -25,6 +25,7 @@ FETCHERS = {
     "municipalities": fetch.fetch_municipalities,
     "census": fetch.fetch_census,
     "cnes": fetch.fetch_cnes,
+    "geo": fetch.fetch_geo,
 }
 
 
@@ -90,7 +91,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "fetch":
             manifest = _manifest_or_empty(directory)
             for name in args.only or sorted(
-                FETCHERS, key=["municipalities", "census", "cnes"].index
+                FETCHERS, key=["municipalities", "census", "cnes", "geo"].index
             ):
                 entry = FETCHERS[name](directory, manifest)
                 write_manifest(directory, manifest)
