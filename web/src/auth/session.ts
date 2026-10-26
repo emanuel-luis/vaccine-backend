@@ -27,11 +27,13 @@ export function useSession(): Session {
   }).data
 
   const profile = auth.user?.profile
+  // /me answers scope null when the token has no region_scope claim: keep the claim-derived one.
   let scope = claims.scope
-  if (me?.scope.level === 'BR') scope = { level: 'BR' }
-  else if (me?.scope.level === 'UF' && me.scope.state) scope = { level: 'UF', state: me.scope.state }
-  else if (me?.scope.level === 'MUN' && me.scope.municipalityCode)
-    scope = { level: 'MUN', municipalityCode: me.scope.municipalityCode }
+  const view = me?.scope
+  if (view?.level === 'BR') scope = { level: 'BR' }
+  else if (view?.level === 'UF' && view.state) scope = { level: 'UF', state: view.state }
+  else if (view?.level === 'MUN' && view.municipalityCode != null)
+    scope = { level: 'MUN', municipalityCode: String(view.municipalityCode) }
 
   return {
     authenticated: auth.isAuthenticated,
