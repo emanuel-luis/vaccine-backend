@@ -16,6 +16,19 @@ export type Campaign = S['Campaign']
 export type CampaignDetail = S['CampaignDetail']
 export type CampaignRequest = S['CampaignRequest']
 export type DailyPoint = S['DailyPoint']
+export type Sources = S['Sources']
+export type Source = S['Source']
+export type Job = S['Job']
+export type JobLogLine = S['JobLogLine']
+export type DbtInvocation = S['DbtInvocation']
+export type DbtNodeResult = S['DbtNodeResult']
+export type Reconciliation = S['Reconciliation']
+export type ReconCheck = S['Check']
+export type ReconDiff = S['Diff']
+export type Ingest = S['Ingest']
+export type HourDoses = S['HourDoses']
+export type RejectReason = S['RejectReason']
+export type JobKind = 'load-reference' | 'dbt-build' | 'reconcile'
 export type AlertsQuery = Omit<operations['lowCoverage']['parameters']['query'], 'level'> & {
   level: 'state' | 'municipality'
 }

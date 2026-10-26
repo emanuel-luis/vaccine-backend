@@ -16,6 +16,7 @@ and ops.reconciliation_diff; run metadata goes to ops.load_run (command `reconci
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -222,9 +223,14 @@ def record(conn: psycopg.Connection[Any], run_id: uuid.UUID, results: list[Check
         )
 
 
-def run_reconcile(conn: psycopg.Connection[Any]) -> list[CheckResult]:
-    """Run the checks and record them. A failed check marks the run failed; it does not raise."""
+def run_reconcile(
+    conn: psycopg.Connection[Any], on_start: Callable[[uuid.UUID], None] | None = None
+) -> list[CheckResult]:
+    """Run the checks and record them. A failed check marks the run failed; it does not raise.
+    `on_start` receives the run id as soon as the run row exists (the worker links its job)."""
     run_id = runlog.start_run(conn, "reconcile", {})
+    if on_start:
+        on_start(run_id)
     try:
         results = run_checks(conn)
         record(conn, run_id, results)
