@@ -122,6 +122,7 @@ services:
       dockerfile: elt/Dockerfile
     command: ["worker"]
     restart: unless-stopped
+    stop_grace_period: 60s  # an in-process job finishes after SIGTERM; dbt is terminated at once
     depends_on:
       api:
         condition: service_healthy  # Flyway has applied the ops.job tables

@@ -22,6 +22,8 @@ CREATE TABLE ops.job (
 -- One job at a time is a database rule: a second queued or running row violates this index.
 CREATE UNIQUE INDEX ux_job_single_active ON ops.job ((1)) WHERE status IN ('queued', 'running');
 CREATE INDEX ix_job_requested_at ON ops.job (requested_at DESC);
+-- The admin ingest query filters raw.live_dose on received_at.
+CREATE INDEX ix_live_dose_received_at ON raw.live_dose (received_at);
 
 CREATE TABLE ops.job_log (
     job_id    UUID        NOT NULL REFERENCES ops.job (job_id) ON DELETE CASCADE,

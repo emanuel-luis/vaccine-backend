@@ -20,7 +20,7 @@ def add(
     directory: Path,
     manifest: Manifest,
     source_id: str,
-    table: str,
+    table: str | None,
     columns: list[str],
     rows: list[dict[str, str]],
 ) -> None:
@@ -127,6 +127,14 @@ def sources(tmp_path: Path) -> Path:
             unit("2026-10-24", "0000108", "211130", "UBS A DUPLICATE"),
             unit("2026-10-24", "0000116", "999999", "UBS NOWHERE"),
         ],
+    )
+    add(  # a geometry is verified and recorded but loads into no table
+        tmp_path,
+        manifest,
+        "ibge_malha_test",
+        None,
+        ["codarea", "geometry"],
+        [{"codarea": "21", "geometry": '{"type":"Polygon","coordinates":[]}'}],
     )
     write_manifest(tmp_path, manifest)
     return tmp_path

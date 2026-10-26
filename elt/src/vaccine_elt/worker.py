@@ -33,6 +33,7 @@ log = logging.getLogger(__name__)
 
 POLL_SECONDS = 5.0
 HEARTBEAT_SECONDS = 10.0
+STALE_SECONDS = 30  # a running job without a heartbeat for this long has lost its worker
 MAX_LOG_LINES = 5000
 MAX_MESSAGE_CHARS = 2000
 MAX_ERROR_CHARS = 2000
@@ -151,10 +152,17 @@ def _reconcile(ctx: JobContext) -> None:
         raise JobFailed(f"reconcile checks failed: {', '.join(failed)}")
 
 
+DBT_ERROR = re.compile(
+    r"\b(?:ERROR|FAIL)\b(?!=)|\b(?:ERROR|FAIL)=[1-9]|Completed with [1-9]\d* error"
+)
+DBT_WARN = re.compile(r"\bWARN(?:ING)?\b(?!=)|\bWARN=[1-9]")
+
+
 def dbt_line_level(line: str) -> str:
-    if re.search(r"\b(ERROR|FAIL)\b", line):
+    """The summary `Done. PASS=3 WARN=0 ERROR=0 ...` is info unless a count is above zero."""
+    if DBT_ERROR.search(line):
         return "error"
-    return "warn" if re.search(r"\bWARN(ING)?\b", line) else "info"
+    return "warn" if DBT_WARN.search(line) else "info"
 
 
 def _dbt_build(ctx: JobContext) -> None:
@@ -241,15 +249,19 @@ class Worker:
             self.stop.wait(HEARTBEAT_SECONDS)
 
     def recover(self, conn: psycopg.Connection[Any]) -> None:
+        """Fail the running jobs this worker id left behind (a restart) and any job whose worker
+        stopped heartbeating; a job another live worker owns is never touched."""
         rows = conn.execute(
-            "UPDATE ops.job SET status = 'failed', finished_at = now(), error = 'worker restarted'"
-            " WHERE status = 'running' RETURNING job_id, kind"
+            "UPDATE ops.job SET status = 'failed', finished_at = now(),"
+            " error = CASE WHEN worker_id = %s THEN 'worker restarted' ELSE 'worker lost' END"
+            " WHERE status = 'running' AND (worker_id = %s"
+            f" OR coalesce(heartbeat_at, started_at) < now() - interval '{STALE_SECONDS} seconds')"
+            " RETURNING job_id, kind",
+            (self.worker_id, self.worker_id),
         ).fetchall()
         for job_id, kind in rows:
             notify(conn, {"jobId": str(job_id), "kind": kind, "status": "failed"})
-            log.warning(
-                "job %s (%s) was running when the worker restarted: marked failed", job_id, kind
-            )
+            log.warning("job %s (%s) was orphaned by its worker: marked failed", job_id, kind)
 
     def claim(self, conn: psycopg.Connection[Any]) -> tuple[uuid.UUID, str] | None:
         row = conn.execute(
@@ -273,20 +285,32 @@ class Worker:
         handler = JobLogHandler(job_log)
         logging.getLogger().addHandler(handler)
         error: str | None = None
+        interrupt: BaseException | None = None
         try:
             log.info("job %s (%s) started", job_id, kind)
             dispatch(kind, JobContext(conn, job_id, self.directory, job_log, self))
         except Exception as exc:  # noqa: BLE001 - any failure marks the job failed
             error = f"{type(exc).__name__}: {exc}" if not isinstance(exc, JobFailed) else str(exc)
             log.error("job failed: %s", error)
+        except BaseException as exc:  # noqa: BLE001 - Ctrl-C must not leave the job running
+            error, interrupt = "interrupted", exc
+            log.error("job failed: %s", error)
         finally:
             logging.getLogger().removeHandler(handler)
         status = "failed" if error else "succeeded"
-        conn.execute(
-            "UPDATE ops.job SET status = %s, finished_at = now(), error = %s WHERE job_id = %s",
-            (status, error[:MAX_ERROR_CHARS] if error else None, job_id),
-        )
-        notify(conn, {"jobId": str(job_id), "kind": kind, "status": status})
+        updated = conn.execute(
+            "UPDATE ops.job SET status = %s, finished_at = now(), error = %s"
+            " WHERE job_id = %s AND status = 'running' AND worker_id = %s",
+            (status, error[:MAX_ERROR_CHARS] if error else None, job_id, self.worker_id),
+        ).rowcount
+        if updated:
+            notify(conn, {"jobId": str(job_id), "kind": kind, "status": status})
+        else:
+            log.warning(
+                "job %s is no longer running under %s: result dropped", job_id, self.worker_id
+            )
+        if interrupt is not None:
+            raise interrupt
 
     def run(self) -> int:
         signal.signal(signal.SIGTERM, self.request_stop)
@@ -300,13 +324,15 @@ class Worker:
             log.info("worker %s ready", self.worker_id)
             try:
                 while not self.stop.is_set():
+                    self.recover(conn)  # also frees the slot of a worker that died
                     if (job := self.claim(conn)) is not None:
                         self.execute(conn, log_conn, *job)
                     else:
                         for _ in conn.notifies(timeout=POLL_SECONDS, stop_after=1):
                             break
             except KeyboardInterrupt:
-                pass
+                log.warning("worker %s interrupted", self.worker_id)
+                raise
             finally:
                 self.stop.set()
         return 0
