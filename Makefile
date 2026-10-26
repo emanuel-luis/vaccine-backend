@@ -21,7 +21,7 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
-	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi
+	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi \n	web-install web-lint web-test web-build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -58,7 +58,7 @@ test-python: ## ELT tests incl. Testcontainers (-m "not external")
 env: ## Create .env from .env.example when missing
 	@test -f .env || { cp .env.example .env && echo "created .env from .env.example"; }
 
-up: env ## Build and start Postgres + API (Flyway migrates on start), wait until healthy
+up: env ## Build and start Postgres, Keycloak, API and web, wait until healthy
 	$(COMPOSE) up -d --build --wait
 
 down: ## Stop the stack and remove its volumes
@@ -92,3 +92,15 @@ speed-check: ## Post 3 doses, check today +3, run dbt-build + reconcile, check t
 
 openapi: ## Regenerate docs/api/openapi.json from the controllers (no Docker needed; commit the result)
 	$(MVN) test-compile failsafe:integration-test failsafe:verify -Dit.test=OpenApiSpecIT -Dopenapi.write=true
+
+web-install: ## Install the web app dependencies from the lockfile (npm ci)
+	cd web && npm ci
+
+web-lint: ## Everything the CI web job checks before tests: eslint and the TypeScript compiler
+	cd web && npm run lint && npm run typecheck
+
+web-test: ## Web unit tests (Vitest)
+	cd web && npm test
+
+web-build: ## Production build of the SPA into web/dist
+	cd web && npm run build
