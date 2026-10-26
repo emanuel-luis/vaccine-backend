@@ -15,7 +15,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      // A failed login must not record the demo password into the uploaded report.
+      use: { trace: 'off', screenshot: 'off', video: 'off' },
+    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },

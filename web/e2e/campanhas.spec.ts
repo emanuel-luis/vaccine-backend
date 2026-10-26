@@ -6,6 +6,18 @@ const name = `E2E campanha ${Date.now()}`
 test.describe('gestor.bahia', () => {
   test.use({ storageState: authFile('gestor.bahia') })
 
+  // Set once the form is saved; the cleanup below deletes it if the test did not.
+  let createdId: string | undefined
+
+  test.afterEach(async ({ page }) => {
+    if (!createdId) return
+    await page.goto(`/campanhas/${createdId}`)
+    await page.getByRole('button', { name: 'Excluir' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Excluir' }).click()
+    await expect(page).toHaveURL(/\/campanhas$/)
+    createdId = undefined
+  })
+
   test('creates, lists, opens and deletes a campaign', async ({ page }) => {
     await page.goto('/campanhas/nova')
     await page.getByLabel('Nome').fill(name)
@@ -19,6 +31,7 @@ test.describe('gestor.bahia', () => {
     await page.getByRole('button', { name: 'Salvar' }).click()
 
     await expect(page).toHaveURL(/\/campanhas\/[0-9a-f-]{36}$/)
+    createdId = page.url().split('/').pop()
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
 
     await page.goto('/campanhas')
@@ -29,6 +42,7 @@ test.describe('gestor.bahia', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Excluir' }).click()
     await expect(page).toHaveURL(/\/campanhas$/)
     await expect(page.getByRole('link', { name })).toHaveCount(0)
+    createdId = undefined
   })
 })
 
