@@ -11,10 +11,13 @@ if (!password) throw new Error('Set KC_DEMO_PASSWORD (the demo users password fr
 const out = resolve(dirname(fileURLToPath(import.meta.url)), '../../docs/screenshots')
 mkdirSync(out, { recursive: true })
 
-const browser = await chromium.launch()
+// Headless Chromium needs software WebGL for the map tiles.
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
+// The generated history covers 2024-2025; the simulator adds today's doses on top.
+const today = new Date().toISOString().slice(0, 10)
 
 async function session(user, colorScheme) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, baseURL: base })
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, baseURL: base, bypassCSP: true })
   const page = await context.newPage()
   await page.goto('/painel')
   await page.locator('#username').fill(user)
@@ -41,20 +44,35 @@ async function shot(page, path, name) {
   console.log(`wrote ${name}.png`)
 }
 
+// A fresh stack has no campaigns: create one through the form so the detail page has something to show.
+async function createCampaign(page) {
+  const year = new Date().getFullYear()
+  await page.goto('/campanhas/nova')
+  await page.getByLabel('Nome').fill('Multivacinação Bahia')
+  await page.getByLabel('Vacina').locator('option').nth(1).waitFor({ state: 'attached' })
+  await page.getByLabel('Vacina').selectOption({ index: 1 })
+  await page.getByLabel('Região').selectOption('UF:BA')
+  await page.getByLabel('Início').fill(`${year}-01-01`)
+  await page.getByLabel('Fim').fill(`${year}-12-31`)
+  await page.getByLabel('Meta de doses').fill('50000')
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await page.waitForURL(/\/campanhas\/[0-9a-f-]{36}$/)
+}
+
 for (const scheme of ['light', 'dark']) {
   const page = await session('gestor.nacional', scheme)
   const suffix = scheme === 'dark' ? '-dark' : ''
   await page.getByRole('status', { name: 'Atualização: Ao vivo' }).waitFor({ timeout: 30_000 })
-  await shot(page, '/painel', `painel${suffix}`)
-  await shot(page, '/cobertura/BA', `cobertura-ba${suffix}`)
+  await shot(page, `/painel?de=2025-01-01&ate=${today}`, `painel${suffix}`)
+  await shot(page, '/cobertura/BA?ano=2025', `cobertura-ba${suffix}`)
   if (scheme === 'light') {
-    await shot(page, '/cobertura/BA/2927408', 'cobertura-salvador-unidades')
-    await shot(page, '/alertas', 'alertas')
+    await shot(page, '/cobertura/BA/2927408?ano=2025', 'cobertura-salvador-unidades')
+    await shot(page, '/alertas?ano=2025', 'alertas')
     await page.goto('/campanhas')
     await settle(page)
     const first = page.locator('tbody tr th a').first()
-    if ((await first.count()) === 0) throw new Error('No campaign to photograph: create one first')
-    await first.click()
+    if ((await first.count()) === 0) await createCampaign(page)
+    else await first.click()
     await page.addStyleTag({ content: '.live-ticker{visibility:hidden}' })
     await settle(page)
     await page.screenshot({ path: `${out}/campanha-detalhe.png` })
