@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,17 +27,17 @@ public class HealthUnitController {
     /** One version of a unit; {@code validTo} is exclusive and 9999-12-31 for the current one. */
     public record HealthUnitVersion(
             String cnesCode,
-            String unitName,
-            String neighborhood,
-            String street,
-            Integer unitTypeCode,
-            String unitTypeLabel,
+            @Nullable String unitName,
+            @Nullable String neighborhood,
+            @Nullable String street,
+            @Nullable Integer unitTypeCode,
+            @Nullable String unitTypeLabel,
             boolean isActive,
             int municipalityCode,
             String municipalityName,
             String stateAbbr,
-            BigDecimal latitude,
-            BigDecimal longitude,
+            @Nullable BigDecimal latitude,
+            @Nullable BigDecimal longitude,
             LocalDate validFrom,
             LocalDate validTo,
             boolean isCurrent) {}

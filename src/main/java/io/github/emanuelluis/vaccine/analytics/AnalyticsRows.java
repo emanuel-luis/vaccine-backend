@@ -2,6 +2,7 @@ package io.github.emanuelluis.vaccine.analytics;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import org.jspecify.annotations.Nullable;
 
 /** Row types of the analytics marts; column contracts in docs/data-model.md. */
 public final class AnalyticsRows {
@@ -29,7 +30,7 @@ public final class AnalyticsRows {
             LocalDate monthStart,
             String vaccineCode,
             String sex,
-            Integer ageBandYears,
+            @Nullable Integer ageBandYears,
             long doses) {}
 
     /** One row of {@code marts.mart_coverage_by_state}. */
@@ -42,9 +43,9 @@ public final class AnalyticsRows {
             int targetAgeYears,
             long doses,
             long targetPopulation,
-            BigDecimal sampleFraction,
-            BigDecimal expectedPopulation,
-            BigDecimal coveragePct,
+            @Nullable BigDecimal sampleFraction,
+            @Nullable BigDecimal expectedPopulation,
+            @Nullable BigDecimal coveragePct,
             boolean numeratorIsSynthetic,
             String denominatorSource) {}
 }

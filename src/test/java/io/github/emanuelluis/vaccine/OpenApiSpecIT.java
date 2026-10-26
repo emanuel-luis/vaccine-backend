@@ -1,7 +1,14 @@
 package io.github.emanuelluis.vaccine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import io.github.emanuelluis.vaccine.live.LiveListener;
 import java.nio.charset.StandardCharsets;
@@ -53,5 +60,20 @@ class OpenApiSpecIT {
         assertThat(actual)
                 .as("docs/api/openapi.json is out of date with the controllers: run `make openapi` and commit it")
                 .isEqualTo(committed);
+    }
+
+    @Test
+    void requiredAndNullablePropertiesFollowTheJavaTypes() throws Exception {
+        String schemas = "$.components.schemas.";
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath(schemas + "SummaryData.required", hasSize(5)))
+                .andExpect(jsonPath(schemas + "SummaryData.properties.*", hasSize(5)))
+                .andExpect(jsonPath(schemas + "Meta.required", not(hasItem("batchGeneration"))))
+                .andExpect(jsonPath(schemas + "Meta.required", hasItem("source")))
+                .andExpect(jsonPath(schemas + "Meta.properties.batchGeneration.type", contains("integer", "null")))
+                .andExpect(jsonPath(schemas + "Me.required", not(hasItem("scope"))))
+                .andExpect(jsonPath(schemas + "Me.properties.scope.oneOf[1].type", is("null")))
+                .andExpect(jsonPath(schemas + "DoseRequest.required", not(hasItem("lotNumber"))))
+                .andExpect(jsonPath(schemas + "ApiItemMe.required", containsInAnyOrder("data", "meta")));
     }
 }
