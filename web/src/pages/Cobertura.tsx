@@ -36,7 +36,8 @@ export function Cobertura() {
   const coverage = metric === 'coverage'
   const { vaccine, dose } = effectiveVaccineDose(filters, vaccinesQuery.data ?? [], coverage)
   const period = resolvePeriod(filters)
-  const ageBand = ageBandOf(filters)
+  // the map API accepts ageBand for doses only; the URL keeps faixa
+  const ageBand = coverage ? undefined : ageBandOf(filters)
   const level: MapQuery['level'] = uf ? 'municipality' : 'state'
 
   const query: MapQuery = {
@@ -75,8 +76,8 @@ export function Cobertura() {
     region: regionParam(uf, municipio),
     state: uf,
     year: coverage ? String(query.year) : undefined,
-    from: coverage ? undefined : period.from,
-    to: coverage ? undefined : period.to,
+    from: period.from,
+    to: period.to,
     vaccine,
     dose,
     ageBand: ageBand === undefined ? undefined : String(ageBand),

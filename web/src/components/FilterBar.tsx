@@ -120,17 +120,19 @@ export function FilterBar({ indicatorOnly = false, hideRegion = false }: FilterB
             ))}
           </select>
         </label>
-        <label>
-          Faixa etária
-          <select value={filters.faixa ?? ''} onChange={(e) => update({ faixa: e.target.value })}>
-            <option value="">Todas</option>
-            {BANDS.map((b) => (
-              <option key={b} value={b}>
-                {ageBandLabel(b)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!indicatorOnly && (
+          <label>
+            Faixa etária
+            <select value={filters.faixa ?? ''} onChange={(e) => update({ faixa: e.target.value })}>
+              <option value="">Todas</option>
+              {BANDS.map((b) => (
+                <option key={b} value={b}>
+                  {ageBandLabel(b)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="button" className="btn" onClick={() => update({ de: '', ate: '', ano: '', regiao: '', vacina: '', dose: '', faixa: '' })}>
           Limpar
         </button>
