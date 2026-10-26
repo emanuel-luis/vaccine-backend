@@ -1,4 +1,5 @@
-"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate | reconcile | simulate`.
+"""Command line: `vaccine-elt fetch | convert-legacy-cnes | load-reference | generate | reconcile | simulate
+| record-dbt-results | worker`.
 
 Database connection: libpq variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD)."""
 
@@ -10,6 +11,7 @@ import os
 import signal
 import sys
 import time
+import uuid
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
@@ -17,6 +19,7 @@ from pathlib import Path
 import psycopg
 
 from vaccine_elt import config, fetch
+from vaccine_elt.dbt_results import record_dbt_results
 from vaccine_elt.generator.core import LOCAL_TZ
 from vaccine_elt.generator.inputs import load_reference_data, load_schedule, schedule_path
 from vaccine_elt.generator.writer import run_generate
@@ -24,6 +27,7 @@ from vaccine_elt.load import load_reference
 from vaccine_elt.manifest import Manifest, ManifestError, read_manifest, write_manifest
 from vaccine_elt.reconcile import run_reconcile
 from vaccine_elt.simulator import Clock, Drawer, Simulator, TokenCache, urllib_transport
+from vaccine_elt.worker import Worker
 
 FETCHERS = {
     "municipalities": fetch.fetch_municipalities,
@@ -86,6 +90,13 @@ def _parser() -> argparse.ArgumentParser:
         help="check live.dose_daily and the serving merge against the landing tables"
         " (exit 1 when a check fails)",
     )
+    record = commands.add_parser(
+        "record-dbt-results",
+        help="copy a dbt run_results.json into ops.dbt_invocation (idempotent)",
+    )
+    record.add_argument("--run-results", type=Path, required=True)
+    record.add_argument("--job-id", type=uuid.UUID, default=None)
+    commands.add_parser("worker", help="run the queued data-management jobs (SIGTERM to stop)")
     return parser
 
 
@@ -178,6 +189,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"persons: {data.persons}, sample_fraction: {data.sample_fraction}")
         elif args.command == "simulate":
             return _simulate(args, directory)
+        elif args.command == "worker":
+            return Worker(directory).run()
+        elif args.command == "record-dbt-results":
+            with psycopg.connect(autocommit=True) as conn:
+                invocation = record_dbt_results(conn, args.run_results, args.job_id)
+            print(f"{invocation.invocation_id}: {len(invocation.nodes)} node results")
         elif args.command == "reconcile":
             with psycopg.connect(autocommit=True) as conn:
                 checks = run_reconcile(conn)
