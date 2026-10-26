@@ -1,9 +1,12 @@
-# Build context is the repo root; the web image needs only web/ (docs/api/ for gen:api).
+# Build context is the repo root; the web image needs web/, docs/api/ (gen:api) and the geometries (copy-geo).
 *
 !web
 !docs/api
+!data/sources/manifest.json
+!data/sources/geo
 **/node_modules
 web/dist
 web/coverage
 web/test-results
 web/playwright-report
+web/public/geo
