@@ -4,6 +4,134 @@
  */
 
 export interface paths {
+    "/api/v1/admin/dbt/invocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["invocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/dbt/invocations/{id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ingest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jobs"];
+        put?: never;
+        post: operations["queue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["job"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/{id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["log"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alerts/low-coverage": {
         parameters: {
             query?: never;
@@ -347,8 +475,20 @@ export interface components {
             data: components["schemas"]["DoseAccepted"];
             meta: components["schemas"]["Meta"];
         };
+        ApiItemIngest: {
+            data: components["schemas"]["Ingest"];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiItemJob: {
+            data: components["schemas"]["Job"];
+            meta: components["schemas"]["Meta"];
+        };
         ApiItemMe: {
             data: components["schemas"]["Me"];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiItemSources: {
+            data: components["schemas"]["Sources"];
             meta: components["schemas"]["Meta"];
         };
         ApiItemSummaryData: {
@@ -361,6 +501,14 @@ export interface components {
         };
         ApiResponseCampaign: {
             data: components["schemas"]["Campaign"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseDbtInvocation: {
+            data: components["schemas"]["DbtInvocation"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseDbtNodeResult: {
+            data: components["schemas"]["DbtNodeResult"][];
             meta: components["schemas"]["Meta"];
         };
         ApiResponseDosesByAgeBand: {
@@ -379,12 +527,24 @@ export interface components {
             data: components["schemas"]["HealthUnitVersion"][];
             meta: components["schemas"]["Meta"];
         };
+        ApiResponseJob: {
+            data: components["schemas"]["Job"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseJobLogLine: {
+            data: components["schemas"]["JobLogLine"][];
+            meta: components["schemas"]["Meta"];
+        };
         ApiResponseLowCoverage: {
             data: components["schemas"]["LowCoverage"][];
             meta: components["schemas"]["Meta"];
         };
         ApiResponseMapArea: {
             data: components["schemas"]["MapArea"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseReconciliation: {
+            data: components["schemas"]["Reconciliation"][];
             meta: components["schemas"]["Meta"];
         };
         ApiResponseRegion: {
@@ -466,12 +626,61 @@ export interface components {
             targetDoses: number;
             vaccineCode: string;
         };
+        Check: {
+            /** Format: int64 */
+            actualTotal: number;
+            /** Format: int64 */
+            batchGeneration?: number | null;
+            checkName: string;
+            diffs: components["schemas"]["Diff"][];
+            /** Format: int64 */
+            expectedTotal: number;
+            /** Format: int64 */
+            keysCompared: number;
+            /** Format: int64 */
+            keysMismatched: number;
+            /** Format: int64 */
+            openGeneration: number;
+            passed: boolean;
+        };
         DailyPoint: {
             /** Format: date */
             date: string;
             /** Format: int64 */
             doses?: number | null;
             suppressed: boolean;
+        };
+        DbtInvocation: {
+            /** Format: int64 */
+            batchGeneration?: number | null;
+            command: string;
+            dbtVersion: string;
+            elapsedS?: number | null;
+            /** Format: date-time */
+            generatedAt: string;
+            invocationId: string;
+            /** Format: uuid */
+            jobId?: string | null;
+            success: boolean;
+        };
+        DbtNodeResult: {
+            executionTimeS?: number | null;
+            /** Format: int64 */
+            failures?: number | null;
+            message?: string | null;
+            name: string;
+            resourceType: string;
+            status: string;
+            uniqueId: string;
+        };
+        Diff: {
+            /** Format: int64 */
+            actual: number;
+            diffKey: string;
+            /** Format: int64 */
+            expected: number;
+            /** Format: int32 */
+            lineNo: number;
         };
         DoseAccepted: {
             /** Format: uuid */
@@ -548,6 +757,50 @@ export interface components {
             /** Format: date */
             validTo: string;
         };
+        HourDoses: {
+            /** Format: int64 */
+            doses: number;
+            /** Format: date-time */
+            hour: string;
+        };
+        Ingest: {
+            acceptedPerHour: components["schemas"]["HourDoses"][];
+            rejectsByReason: components["schemas"]["RejectReason"][];
+        };
+        Job: {
+            dbtInvocationId?: string | null;
+            error?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+            /** Format: date-time */
+            heartbeatAt?: string | null;
+            /** Format: uuid */
+            jobId: string;
+            kind: string;
+            /** Format: int64 */
+            rejects?: number | null;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            /** Format: int64 */
+            rows?: number | null;
+            /** Format: uuid */
+            runId?: string | null;
+            /** Format: date-time */
+            startedAt?: string | null;
+            status: string;
+        };
+        JobLogLine: {
+            level: string;
+            /** Format: date-time */
+            loggedAt: string;
+            message: string;
+            /** Format: int32 */
+            seq: number;
+        };
+        JobRequest: {
+            kind: string;
+        };
         LowCoverage: {
             abbr?: string | null;
             code: string;
@@ -597,11 +850,28 @@ export interface components {
             pct?: number | null;
             suppressed: boolean;
         };
+        Reconciliation: {
+            checks: components["schemas"]["Check"][];
+            /** Format: date-time */
+            finishedAt?: string | null;
+            /** Format: uuid */
+            runId: string;
+            /** Format: date-time */
+            startedAt: string;
+            status: string;
+        };
         Region: {
             abbr?: string | null;
             code: string;
             level: string;
             name: string;
+        };
+        RejectReason: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int32 */
+            httpStatus: number;
+            reason: string;
         };
         Run: {
             command: string;
@@ -623,6 +893,28 @@ export interface components {
             /** Format: int32 */
             municipalityCode?: number | null;
             state?: string | null;
+        };
+        Source: {
+            licenseNote: string;
+            licenseStatus: string;
+            path: string;
+            publisher: string;
+            retrievedAt: string;
+            /** Format: int64 */
+            rows: number;
+            sha256: string;
+            snapshotDate: string;
+            sourceId: string;
+            sourceUrl: string;
+            tableName?: string | null;
+            verified: boolean;
+        };
+        Sources: {
+            /** Format: date-time */
+            loadedAt?: string | null;
+            /** Format: uuid */
+            runId?: string | null;
+            sources: components["schemas"]["Source"][];
         };
         SseEmitter: {
             /** Format: int64 */
@@ -705,6 +997,210 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    invocations: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDbtInvocation"];
+                };
+            };
+        };
+    };
+    results: {
+        parameters: {
+            query?: {
+                status?: string;
+                resourceType?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDbtNodeResult"];
+                };
+            };
+        };
+    };
+    ingest: {
+        parameters: {
+            query?: {
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemIngest"];
+                };
+            };
+        };
+    };
+    jobs: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJob"];
+                };
+            };
+        };
+    };
+    queue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemJob"];
+                };
+            };
+        };
+    };
+    job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemJob"];
+                };
+            };
+        };
+    };
+    log: {
+        parameters: {
+            query?: {
+                afterSeq?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJobLogLine"];
+                };
+            };
+        };
+    };
+    reconciliation: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReconciliation"];
+                };
+            };
+        };
+    };
+    sources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiItemSources"];
+                };
+            };
+        };
+    };
     lowCoverage: {
         parameters: {
             query: {
