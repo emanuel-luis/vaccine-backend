@@ -25,4 +25,6 @@ COPY data/sources /app/data/sources
 COPY --chown=app:app dbt /app/dbt
 
 USER app
+# The worker runs `dbt build`: install the dbt packages now (dbt renders profiles.yml even for deps).
+RUN PGUSER=build PGPASSWORD=build PGDATABASE=build     dbt deps --project-dir /app/dbt --profiles-dir /app/dbt
 ENTRYPOINT ["vaccine-elt"]
