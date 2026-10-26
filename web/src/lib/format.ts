@@ -1,6 +1,9 @@
 const nf = new Intl.NumberFormat('pt-BR')
 const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
+/** Plain number with pt-BR separators, for chart axes. */
+export const fmtNumber = (v: number): string => nf.format(v)
+
 export const SUPPRESSED = '< 5'
 
 /** Count for display; null (suppressed or missing) renders as "< 5". */

@@ -12,7 +12,9 @@ import {
   COVERAGE_BREAKS,
   dosesBreaks,
   legendItems,
+  fitOptions,
   NODATA_COLOR,
+  viewBbox,
 } from './scale'
 
 describe('map scale', () => {
@@ -95,5 +97,38 @@ describe('map scale', () => {
       ],
     }
     expect(bbox(geo)).toEqual([-50, -20, -40, -5])
+  })
+})
+
+describe('map view', () => {
+  const square = (code: string, x: number) => ({
+    type: 'Feature' as const,
+    properties: { codarea: code },
+    geometry: {
+      coordinates: [
+        [
+          [x, 0],
+          [x + 1, 0],
+          [x + 1, 1],
+          [x, 1],
+        ],
+      ],
+    },
+  })
+  const geo = { features: [square('1', 0), square('2', 10)] }
+
+  it('fits the selected area, or everything without a selection', () => {
+    expect(viewBbox(geo, '2')).toEqual([10, 0, 11, 1])
+    expect(viewBbox(geo)).toEqual([0, 0, 11, 1])
+  })
+
+  it('falls back to everything when the selected code is not in the geometry', () => {
+    expect(viewBbox(geo, '999')).toEqual([0, 0, 11, 1])
+  })
+
+  it('animates a selection only without reduced motion', () => {
+    expect(fitOptions(true, false).animate).toBe(true)
+    expect(fitOptions(true, true).animate).toBe(false)
+    expect(fitOptions(false, false).animate).toBe(false)
   })
 })
