@@ -7,7 +7,12 @@ import { useApi } from '../api/client'
 import { useSession } from './session'
 
 vi.mock('react-oidc-context')
-vi.mock('../api/client', () => ({ useApi: vi.fn(), unwrap: (r: unknown) => r }))
+vi.mock('../api/client', () => ({
+  useApi: vi.fn(),
+  unwrap: (r: unknown) => r,
+  // the mocked GET resolves { data: <payload> }, so unwrapData hands back the payload
+  unwrapData: (r: { data: unknown }) => r.data,
+}))
 
 const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '')
 const token = (payload: object) => `${b64({ alg: 'none' })}.${b64(payload)}.sig`
