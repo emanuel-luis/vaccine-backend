@@ -22,6 +22,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - Web app: `make web-install`, `make web-lint`, `make web-test`, `make web-build`; dev server
   `cd web && npm run dev` (proxies `/api` to localhost:8080); `npm run gen:api` regenerates the
   typed client from `docs/api/openapi.json` (CI fails when it drifts)
+- Browser e2e: `make e2e` (= `cd web && npx playwright test`, needs the stack from `make demo` and
+  `KC_DEMO_PASSWORD` from `.env`; one-time `npx playwright install chromium`), `make screenshots`
+  (rewrites `docs/screenshots/*.png`); specs in `web/e2e`, login through the real Keycloak page.
 - `make smoke` and `make speed-check` get tokens from Keycloak (`vaccine-smoke`,
   `vaccine-simulator`) with the secrets in `.env`; the demo users share `KC_DEMO_PASSWORD`
 - ELT and dbt by hand: `uv run --project elt vaccine-elt ...`,

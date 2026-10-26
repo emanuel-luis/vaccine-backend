@@ -6,7 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (web platform)
+- Speed layer: dose ingest with a generation watermark, a live aggregate merged with the dbt marts
+  in one statement, Postgres `LISTEN`/`NOTIFY` relayed over server-sent events, a dose simulator
+  and `make speed-check`; `vaccine-elt reconcile` and a dbt reconciliation test.
+- Keycloak realm with five demo users, region scoping through the `region_scope` claim, and
+  small-cell suppression (k = 5) in the API and CSV exports.
+- Dashboard API: summary, time series, by-vaccine and by-age-band, coverage map data, health units,
+  low-coverage alerts, campaigns (ETag and `If-Match`) and gestor-only CSV exports; committed
+  OpenAPI spec checked by `OpenApiSpecIT`.
+- Web app (React 19, TypeScript, Vite): OIDC login, live dashboard, drill-down coverage map
+  (Brazil, state, municipality, health units), alerts, campaigns, light and dark themes, a typed
+  client generated from the spec and keyboard and screen-reader support.
+- Data management: queued jobs (`ops.job`) claimed by a worker with `SKIP LOCKED`, dbt results
+  recorded in `ops`, and screens for sources, runs with a live log, quality tests and reconciliation.
+- Browser end-to-end tests (Playwright, six specs plus axe checks) that sign in through Keycloak;
+  `make e2e`, `make screenshots` and a CI step that runs them after `make demo`.
+- README rewrite with architecture, quickstart, demo users and screenshots.
+
 ### Changed
+- The CI end-to-end job now also installs Chromium and runs the Playwright suite (timeout 40
+  minutes) and uploads its report on failure.
 - Repository renamed to `vaccine-warehouse` (GitHub redirects `vaccine-backend`). The Maven
   artifact (`io.github.emanuel-luis:vaccine-warehouse`), the compose project and the Spring
   application name follow.
