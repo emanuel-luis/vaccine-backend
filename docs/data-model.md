@@ -3,7 +3,7 @@
 A Kimball star schema in Postgres with a speed layer for live doses. Flyway owns the landing
 (`raw`), run-metadata (`ops`) and speed (`live`) schemas; dbt builds `staging` and `intermediate`
 views and the `marts` tables. The API reads `marts`, `ops` and `live`, and writes only
-`raw.live_dose`, `live.dose_daily`, `ops.ingest_reject` and `app.campaign`. This file is the contract between the
+`raw.live_dose`, `live.dose_daily`, `ops.ingest_reject`, `app.campaign` and `ops.job` (queued rows only). This file is the contract between the
 dbt project and the API: change a column here and in both places, in the same PR. The design of
 the speed layer is in [WEB_PLATFORM_PLAN.md](WEB_PLATFORM_PLAN.md).
 
@@ -274,6 +274,31 @@ reported as a lost dose.
 - `ops.reconciliation_diff`: PK (`run_id`, `check_name`, `line_no`), `diff_key` jsonb, `expected`,
   `actual`; at most 100 rows per check.
 
+## Data management (jobs and dbt results)
+
+Flyway V9. The API queues jobs; the Python worker (`vaccine-elt worker`) runs them (decisions 58 to 60).
+
+- `ops.job`: PK `job_id`, `kind` (`load-reference`, `dbt-build`, `reconcile`), `status` (`queued`,
+  `running`, `succeeded`, `failed`), `requested_by` (token `preferred_username`, else `sub`),
+  `requested_at`, `started_at`, `finished_at`, `heartbeat_at`, `worker_id`, `run_id` (-> `ops.load_run`,
+  set null on delete), `dbt_invocation_id`, `error`. The partial unique index `ux_job_single_active`
+  (on `(1)` where status is `queued` or `running`) allows one active job. Only the worker changes
+  the status after the insert.
+- `ops.job_log`: PK (`job_id`, `seq`), `logged_at`, `level` (`info`, `warn`, `error`), `message`
+  (at most 2000 characters; at most 5000 lines per job, then one truncation line).
+- `ops.dbt_invocation`: PK `invocation_id`, `job_id`, `command`, `generated_at`, `elapsed_s`,
+  `dbt_version`, `success`, `batch_generation` (the generation that invocation closed, null if none).
+- `ops.dbt_node_result`: PK (`invocation_id`, `unique_id`), `resource_type`, `name`, `status`,
+  `failures`, `execution_time_s`, `message`.
+- `ops.load_run_source`: PK (`run_id`, `source_id`), one row per manifest entry a load-reference run
+  verified: `path`, `table_name` (null for geometries), `publisher`, `source_url`, `license_note`,
+  `license_status` (`to_be_confirmed`, `confirmed`), `retrieved_at`, `snapshot_date`, `rows`,
+  `sha256`, `verified`.
+
+The job `rows` and `rejects` fields are sums of `rows_loaded` and `rows_rejected` in
+`ops.load_run_table` for the job's `run_id` (null without a run). A reconciliation diff key is returned
+as the JSON text of `diff_key`.
+
 ## API mapping
 
 Roles: P = profissional, G = gestor, A = data-admin, I = dose-ingest (service). Scope: S = rows
@@ -301,12 +326,21 @@ Without a token every endpoint except health, `/v3/api-docs` and Swagger UI answ
 | `PUT /api/v1/campaigns/{id}` | G | S | updates `app.campaign` when `If-Match` equals the version (428 missing, 412 stale), bumps `version` |
 | `DELETE /api/v1/campaigns/{id}` | G | S | deletes the row when `If-Match` equals the version (428 missing, 412 stale); 204 |
 | `GET /api/v1/exports/{doses-daily,coverage-municipality,health-units}` | G | S | the same queries as the dashboard endpoints, as CSV (decision 53) |
-| `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event`; filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
+| `GET /api/v1/stream` | P G A | S | `text/event-stream` fed by `LISTEN dose_event, batch_event, job_event` (`job` events only for data-admin tokens); filtered by the token scope and optional `region`; closes at token expiry (at most 30 min) |
 | `GET /api/v1/doses/by-state-month` | P G A | S>=UF | `marts.mart_doses_by_state_month` |
 | `GET /api/v1/doses/by-age-band` | P G A | S>=UF | `marts.mart_doses_by_age_band` |
 | `GET /api/v1/coverage` | P G A | S>=UF | `marts.mart_coverage_by_state` |
 | `GET /api/v1/health-units/{cnesCode}/history` | P G A | S (every version's municipality) | `marts.dim_health_unit` joined to `marts.dim_municipality` |
 | `GET /api/v1/runs/latest` | A | none | `ops.load_run`, `ops.load_run_table` |
+| `GET /api/v1/admin/sources` | A | none | `ops.load_run_source` of the latest succeeded load-reference run; empty list without a run |
+| `POST /api/v1/admin/jobs` | A | none | body `{kind}`; inserts a `queued` row in `ops.job` (`requested_by` = `preferred_username`, else `sub`) and sends `NOTIFY job_queued`; 202 with `Location`; 409 `job_already_active`; 400 unknown kind |
+| `GET /api/v1/admin/jobs[?limit=20]` | A | none | `ops.job`, newest first |
+| `GET /api/v1/admin/jobs/{id}` | A | none | `ops.job` + sums of `ops.load_run_table` for its run; 404 |
+| `GET /api/v1/admin/jobs/{id}/log[?afterSeq=0&limit=500]` | A | none | `ops.job_log` ordered by `seq`; 404 |
+| `GET /api/v1/admin/dbt/invocations[?limit=20]` | A | none | `ops.dbt_invocation`, newest first |
+| `GET /api/v1/admin/dbt/invocations/{id}/results[?status=&resourceType=]` | A | none | `ops.dbt_node_result`, errors and failures first; status `fail`, `error`, `warn`, `pass`, `success`, `skipped`; resourceType `test`, `model`, `seed`; 404 |
+| `GET /api/v1/admin/reconciliation[?limit=10]` | A | none | latest `reconcile` runs of `ops.load_run` with `ops.reconciliation_check` and `ops.reconciliation_diff` |
+| `GET /api/v1/admin/ingest[?hours=24]` | A | none | `raw.live_dose` accepted per hour (`received_at`) and `ops.ingest_reject` by reason and status |
 
 The Java records in `src/main/java/.../analytics/AnalyticsRows.java` and the test fixtures in
 `src/test/resources/fixtures/marts.sql` mirror these columns.
