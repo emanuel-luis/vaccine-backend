@@ -24,7 +24,7 @@ NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
 	load-reference generate dbt-deps dbt-build worker reconcile demo smoke speed-check openapi simulate \
-	web-install web-lint web-test web-build
+	web-install web-lint web-test web-build e2e screenshots
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -115,3 +115,9 @@ web-test: ## Web unit tests (Vitest)
 
 web-build: ## Production build of the SPA into web/dist
 	cd web && npm run build
+
+e2e: env ## Browser e2e (Playwright) against the running stack; run make demo first
+	set -a && . ./.env && set +a && cd web && npx playwright test
+
+screenshots: env ## Regenerate docs/screenshots from the running stack
+	set -a && . ./.env && set +a && cd web && npm run screenshots

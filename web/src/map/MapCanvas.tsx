@@ -1,7 +1,8 @@
-import { Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl'
+import { Map as MapLibreMap, type MapLayerMouseEvent, setWorkerUrl } from 'maplibre-gl'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState } from 'react'
-import { type AreaState, bbox, OUTSIDE_COLOR } from './scale'
+import { type AreaState, bbox, fitOptions, OUTSIDE_COLOR, viewBbox } from './scale'
 
 export interface Geo {
   type: 'FeatureCollection'
@@ -18,6 +19,12 @@ export interface MapCanvasProps {
 }
 
 const SOURCE = 'areas'
+const NONE = ['==', ['get', 'codarea'], ''] as const
+
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+// Vite does not emit the worker next to the chunk, so ship it as an asset and point MapLibre at it.
+setWorkerUrl(workerUrl)
 
 /** 8x8 diagonal hatch, drawn over suppressed areas. */
 function hatchImage() {
@@ -76,6 +83,14 @@ export default function MapCanvas({ geo, states, selectedCode, label, onPick, on
           'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3, 0.6],
         },
       })
+      // The selected area gets its own bold outline (filter set from selectedCode below).
+      map.addLayer({
+        id: 'selected',
+        type: 'line',
+        source: SOURCE,
+        filter: NONE as unknown as never,
+        paint: { 'line-color': '#c2255c', 'line-width': 3.5 },
+      })
       map.on('click', 'fill', (e: MapLayerMouseEvent) => {
         const id = e.features?.[0]?.id
         if (id != null) cb.current.onPick(String(id))
@@ -104,16 +119,23 @@ export default function MapCanvas({ geo, states, selectedCode, label, onPick, on
     if (!ready || !map) return
     const source = map.getSource(SOURCE) as unknown as { setData: (d: unknown) => void }
     source.setData(geo)
-    const [w, s, e, n] = bbox(geo)
+  }, [ready, geo])
+
+  // Zoom to the selected area (the whole geometry when nothing is selected).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map) return
+    map.setFilter('selected', (selectedCode ? ['==', ['get', 'codarea'], selectedCode] : NONE) as never)
+    const [w, s, e, n] = viewBbox(geo, selectedCode)
     if (Number.isFinite(w))
       map.fitBounds(
         [
           [w, s],
           [e, n],
         ],
-        { padding: 16, animate: false },
+        fitOptions(Boolean(selectedCode), reducedMotion()),
       )
-  }, [ready, geo])
+  }, [ready, geo, selectedCode])
 
   useEffect(() => {
     const map = mapRef.current
