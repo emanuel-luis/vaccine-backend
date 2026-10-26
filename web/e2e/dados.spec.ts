@@ -12,13 +12,14 @@ test('lists the sources and runs a reconciliation with its log', async ({ page }
   await page.goto('/dados/execucoes')
   const button = page.getByRole('button', { name: 'Reconciliar' })
   await expect(button).toBeEnabled({ timeout: 60_000 })
-  const links = page.getByRole('table').getByRole('link', { name: 'Reconciliação' })
-  const before = await links.count()
+  // Open the job this click created, read from the POST response, not from the list: the list can
+  // still be loading, already hold older reconciliations on a reused stack, or be capped at 20 rows.
+  const created = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && r.url().endsWith('/api/v1/admin/jobs') && r.status() === 202,
+  )
   await button.click()
-
-  // Newest first: wait for the new row (the list shows 20 at most, far above what a demo run has).
-  await expect(links).toHaveCount(before + 1)
-  await links.first().click()
+  const { data } = (await (await created).json()) as { data: { jobId: string } }
+  await page.goto(`/dados/execucoes/${data.jobId}`)
   await expect(page).toHaveURL(/\/dados\/execucoes\/.+/)
   await expect(page.getByRole('log', { name: 'Registro da execução' }).locator('.log-line').first()).toBeVisible({
     timeout: 60_000,

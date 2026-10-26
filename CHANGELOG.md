@@ -77,3 +77,6 @@ All notable changes to this project are documented here. The format follows
   the JPA entities, Lombok, QueryDSL, devtools, the `src/python` loaders and their CSVs; Flyway
   `V5` drops the legacy tables (the 2023 unit list lives on as the vendored CNES snapshot).
 - The `DROP SCHEMA public CASCADE` bootstrap script and `ddl-auto=update`.
+
+[Unreleased]: https://github.com/emanuel-luis/vaccine-warehouse/compare/d02a361...HEAD
+[0.2.0]: https://github.com/emanuel-luis/vaccine-warehouse/compare/16fb7d9...d02a361
