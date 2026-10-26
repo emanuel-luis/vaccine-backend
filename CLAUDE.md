@@ -13,6 +13,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   `make generate` (`ROWS`, `SEED`), `make dbt-build`, `make reconcile`, `make smoke`,
   `make speed-check`, `make openapi` (rewrites `docs/api/openapi.json`, no Docker),
   `make demo` (up + load-reference + generate + dbt build + reconcile + smoke)
+- Web app: `make web-install`, `make web-lint`, `make web-test`, `make web-build`; dev server
+  `cd web && npm run dev` (proxies `/api` to localhost:8080); `npm run gen:api` regenerates the
+  typed client from `docs/api/openapi.json` (CI fails when it drifts)
 - `make smoke` and `make speed-check` get tokens from Keycloak (`vaccine-smoke`,
   `vaccine-simulator`) with the secrets in `.env`; the demo users share `KC_DEMO_PASSWORD`
 - ELT and dbt by hand: `uv run --project elt vaccine-elt ...`,
@@ -37,6 +40,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   `scripts/speed-check.sh`: live ingest, dbt absorption and reconcile (`make speed-check`)
 - `keycloak/realm-vaccine.json`: realm `vaccine` (roles, clients, demo users, claims), imported by
   compose with `${ENV}` placeholders; `docs/api/openapi.json`: committed spec checked by `OpenApiSpecIT`
+- `web/`: React 19 + TypeScript SPA (Vite), OIDC login via `react-oidc-context`, typed client
+  `src/api/schema.ts` generated from the spec (never edit it by hand), nginx image with a runtime
+  `/config.json`; UI text in pt-BR
 - `compose.yaml`, `Dockerfile`, `Makefile`, `.github/workflows/ci.yml`
 
 ## Invariants
