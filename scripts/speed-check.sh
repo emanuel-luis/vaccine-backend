@@ -88,6 +88,8 @@ echo "ok   replay answered 200 without a change"
 
 make dbt-build
 make reconcile
+# The access token lives 5 minutes; a long dbt build can outlast it.
+reader="$(token vaccine-smoke "${SMOKE_CLIENT_SECRET:-}")"
 
 final="$(today_doses)"
 [[ "$final" == "$after" ]] || fail "dosesToday changed across the batch: $after -> $final"

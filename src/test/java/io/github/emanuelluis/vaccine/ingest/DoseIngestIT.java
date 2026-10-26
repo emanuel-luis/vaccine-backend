@@ -186,7 +186,7 @@ class DoseIngestIT {
         var rejects = rejects();
         assertThat(rejects).hasSize(1);
         assertThat(rejects.get(0))
-                .containsEntry("client_id", "anonymous")
+                .containsEntry("client_id", "vaccine-simulator")
                 .containsEntry("idempotency_key", "key-422")
                 .containsEntry("http_status", 422)
                 .containsEntry("reason", code);

@@ -80,6 +80,10 @@ class SecurityMatrixTest {
                 row("GET /api/v1/runs/latest", 401, 403, 403, 403, 200, 403),
                 // dose-ingest passes authorization; the empty body is then rejected with 400
                 row("POST /api/v1/doses", 401, 403, 403, 403, 403, 400),
+                // an /api/v1 path without a rule (e.g. a future admin endpoint): denied to every role
+                row("GET /api/v1/admin/x", 401, 403, 403, 403, 403, 403),
+                // POST on a read path: denied
+                row("POST /api/v1/me", 401, 403, 403, 403, 403, 403),
                 // not under /api/v1: denied to everyone
                 row("GET /internal/anything", 401, 403, 403, 403, 403, 403));
     }
