@@ -28,7 +28,8 @@ async function session(user, colorScheme) {
 
 async function settle(page) {
   await page.getByRole('heading', { level: 1 }).waitFor()
-  await page.waitForLoadState('networkidle')
+  // The SSE stream keeps the network busy: wait for the loading panels, then let charts and tiles paint.
+  await page.locator('.state-loading').first().waitFor({ state: 'detached' }).catch(() => {})
   await page.waitForTimeout(1500)
 }
 

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { lazy, Suspense, useEffect } from 'react'
+import { Route, Routes, useNavigate } from 'react-router'
 import { RequireAuth } from '../auth/RequireAuth'
 import { RequireRole } from '../auth/RequireRole'
 import { StatePanel } from '../components/StatePanel'
@@ -22,13 +22,25 @@ const DadosTestes = lazy(() => import('../pages/DadosTestes').then((m) => ({ def
 const DadosReconciliacao = lazy(() => import('../pages/DadosReconciliacao').then((m) => ({ default: m.DadosReconciliacao })))
 const lazyPage = (el: React.ReactNode) => <Suspense fallback={<StatePanel state="loading" />}>{el}</Suspense>
 
+/**
+ * "/" goes to the dashboard. After the OIDC callback the router can still render "/" for one pass while
+ * the deep link saved before login is already in the address bar, so the real path decides.
+ */
+function Home() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (window.location.pathname === '/') void navigate('/painel', { replace: true })
+  }, [navigate])
+  return null
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route path="sobre" element={<Sobre />} />
         <Route element={<RequireAuth />}>
-          <Route index element={<Navigate to="/painel" replace />} />
+          <Route index element={<Home />} />
           <Route path="painel" element={lazyPage(<Painel />)} />
           <Route path="cobertura" element={lazyPage(<Cobertura />)} />
           <Route path="cobertura/:uf" element={lazyPage(<Cobertura />)} />
