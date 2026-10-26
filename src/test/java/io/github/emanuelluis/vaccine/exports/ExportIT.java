@@ -3,6 +3,7 @@ package io.github.emanuelluis.vaccine.exports;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.emanuelluis.vaccine.Auth;
@@ -15,11 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** CSV exports over the dashboard fixtures: format, scope, role and suppression. */
 @SpeedLayerSetup
+@TestPropertySource(properties = "vaccine.exports.max-rows=6")
 class ExportIT {
 
     private static final String SEP = "from=2026-09-01&to=2026-09-30";
@@ -109,6 +112,17 @@ class ExportIT {
                         .getContentAsByteArray(),
                 StandardCharsets.UTF_8);
         assertThat(own).contains(";MA;").doesNotContain(";BA;");
+    }
+
+    @Test
+    void anExportAboveTheRowCapIsRejectedWithProblemDetails() throws Exception {
+        // September has 8 BR rows (6 in BA): the cap is 6 here
+        mvc.perform(get("/api/v1/exports/doses-daily?" + SEP).with(gestor()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("exceeds 6 rows")));
+        mvc.perform(get("/api/v1/exports/doses-daily?" + SEP + "&region=UF:BA").with(gestor()))
+                .andExpect(status().isOk());
     }
 
     @Test

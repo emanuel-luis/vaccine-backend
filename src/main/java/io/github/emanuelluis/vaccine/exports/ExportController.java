@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -34,7 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/exports")
 public class ExportController {
 
-    static final int MAX_ROWS = 200_000;
     static final MediaType CSV = MediaType.parseMediaType("text/csv; charset=UTF-8");
     private static final ZoneId LOCAL_ZONE = ZoneId.of("America/Sao_Paulo");
     private static final String VACCINE = "[A-Z0-9_]{2,20}";
@@ -42,10 +42,13 @@ public class ExportController {
 
     private final MergedDosesRepository repository;
     private final Clock clock;
+    private final int maxRows;
 
-    public ExportController(MergedDosesRepository repository, Clock clock) {
+    public ExportController(
+            MergedDosesRepository repository, Clock clock, @Value("${vaccine.exports.max-rows:200000}") int maxRows) {
         this.repository = repository;
         this.clock = clock;
+        this.maxRows = maxRows;
     }
 
     /**
@@ -70,7 +73,7 @@ public class ExportController {
             case "doses-daily" -> {
                 range(from, to);
                 var rows = repository.dosesDaily(
-                        from, to, new Filters(ScopeGuard.filter(jwt, region), vaccine, dose, ageBand), MAX_ROWS + 1);
+                        from, to, new Filters(ScopeGuard.filter(jwt, region), vaccine, dose, ageBand), maxRows + 1);
                 yield csv(
                         List.of(
                                 "date_day",
@@ -145,10 +148,10 @@ public class ExportController {
         DashboardController.checkRange(from, to);
     }
 
-    private static <T> byte[] csv(List<String> header, Rows<T> rows, Function<T, List<Object>> cells) {
-        if (rows.rows().size() > MAX_ROWS) {
+    private <T> byte[] csv(List<String> header, Rows<T> rows, Function<T, List<Object>> cells) {
+        if (rows.rows().size() > maxRows) {
             throw new InvalidRequestException(
-                    "the export exceeds %d rows: narrow the period or the region".formatted(MAX_ROWS));
+                    "the export exceeds %d rows: narrow the period or the region".formatted(maxRows));
         }
         return CsvWriter.write(header, rows.rows().stream().map(cells).toList());
     }
