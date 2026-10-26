@@ -13,6 +13,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   `make generate` (`ROWS`, `SEED`), `make dbt-build`, `make reconcile`, `make smoke`,
   `make speed-check`, `make openapi` (rewrites `docs/api/openapi.json`, no Docker),
   `make demo` (up + load-reference + generate + dbt build + reconcile + smoke)
+- Simulator: compose service `simulator` posts `SIMULATOR_RATE_PER_SECOND` synthetic doses per
+  second (0 pauses it); `make simulate` (`RATE`, `MAX_DOSES`) runs it from the host against the
+  running stack; `make speed-check` stops it while counting and starts it again on exit
 - Web app: `make web-install`, `make web-lint`, `make web-test`, `make web-build`; dev server
   `cd web && npm run dev` (proxies `/api` to localhost:8080); `npm run gen:api` regenerates the
   typed client from `docs/api/openapi.json` (CI fails when it drifts)
@@ -31,7 +34,9 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - `src/main/resources/db/migration/`: Flyway migrations (history in schema `ops`)
 - `elt/src/vaccine_elt/`: `fetch.py` + `sources/` (public endpoints -> snapshots), `manifest.py`,
   `contracts.py` (typed raw contracts), `load.py` (load-reference), `runlog.py` (ops tables),
-  `reconcile.py` (reconcile)
+  `reconcile.py` (reconcile), `simulator.py` (live dose simulator, `simulate`)
+- `elt/Dockerfile`: image for the simulator (and the data-management worker), built with the repo
+  root as context; keeps the repo layout because `config.REPO_ROOT` is `parents[3]`
 - `data/sources/`: vendored snapshots + `manifest.json` (sha256-verified on load)
 - `dbt/`: staging (incl. `stg_live__*`), `intermediate/int_health_unit_versions` (SCD2), marts,
   seeds, singular tests, `macros/live_generation.sql` (run hooks)
