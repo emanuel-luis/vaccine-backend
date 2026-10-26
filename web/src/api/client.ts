@@ -33,6 +33,13 @@ export function unwrap<T>(result: { data?: T; response: Response }): T {
   return result.data
 }
 
+/** Like unwrap, for envelopes whose generated `data` is optional: throws when it is missing. */
+export function unwrapData<T>(result: { data?: { data?: T }; response: Response }): T {
+  const body = unwrap(result).data
+  if (body === undefined) throw new ApiError(result.response.status, 'empty body')
+  return body
+}
+
 /** Query retry: network errors and 5xx only, never 401/403 or other 4xx. */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= 2) return false

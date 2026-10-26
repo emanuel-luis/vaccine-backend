@@ -17,6 +17,12 @@ npm run gen:api   # regenerate src/api/schema.ts from ../docs/api/openapi.json
 `src/api/schema.ts` is a temporary hand-written subset until `docs/api/openapi.json` lands;
 `npm run gen:api` replaces it.
 
+## Map geometries
+
+`scripts/copy-geo.mjs` (run by `predev` and `prebuild`) checks every gzip in `../data/sources/geo/` against
+the sha256 in `../data/sources/manifest.json` and unzips it to `public/geo/` (gitignored). The Docker build
+copies `data/sources/manifest.json` and `data/sources/geo/` into the build stage for the same step.
+
 ## Runtime config
 
 The app fetches `/config.json` before rendering:

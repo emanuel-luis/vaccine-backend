@@ -20,6 +20,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/doses/by-age-band": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["byAgeBand"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/doses/by-vaccine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["byVaccine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/doses/timeseries": {
         parameters: {
             query?: never;
@@ -28,6 +60,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["timeseries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/health-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["healthUnits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["map"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exports/{dataset}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health-units/{cnesCode}/history": {
         parameters: {
             query?: never;
@@ -124,6 +204,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reference/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["regions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reference/vaccines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vaccines"];
         put?: never;
         post?: never;
         delete?: never;
@@ -168,6 +280,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AgeBandDoses: {
+            /** Format: int32 */
+            ageBandYears?: number | null;
+            /** Format: int64 */
+            doses?: number | null;
+            suppressed: boolean;
+        };
         ApiItemDoseAccepted: {
             data: components["schemas"]["DoseAccepted"];
             meta: components["schemas"]["Meta"];
@@ -180,6 +299,10 @@ export interface components {
             data: components["schemas"]["SummaryData"];
             meta: components["schemas"]["Meta"];
         };
+        ApiResponseAgeBandDoses: {
+            data: components["schemas"]["AgeBandDoses"][];
+            meta: components["schemas"]["Meta"];
+        };
         ApiResponseDosesByAgeBand: {
             data: components["schemas"]["DosesByAgeBand"][];
             meta: components["schemas"]["Meta"];
@@ -188,8 +311,20 @@ export interface components {
             data: components["schemas"]["DosesByStateMonth"][];
             meta: components["schemas"]["Meta"];
         };
+        ApiResponseHealthUnitDoses: {
+            data: components["schemas"]["HealthUnitDoses"][];
+            meta: components["schemas"]["Meta"];
+        };
         ApiResponseHealthUnitVersion: {
             data: components["schemas"]["HealthUnitVersion"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseMapArea: {
+            data: components["schemas"]["MapArea"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseRegion: {
+            data: components["schemas"]["Region"][];
             meta: components["schemas"]["Meta"];
         };
         ApiResponseRun: {
@@ -202,6 +337,14 @@ export interface components {
         };
         ApiResponseTimeseriesPoint: {
             data: components["schemas"]["TimeseriesPoint"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseVaccine: {
+            data: components["schemas"]["Vaccine"][];
+            meta: components["schemas"]["Meta"];
+        };
+        ApiResponseVaccineDoses: {
+            data: components["schemas"]["VaccineDoses"][];
             meta: components["schemas"]["Meta"];
         };
         DoseAccepted: {
@@ -249,6 +392,15 @@ export interface components {
             vaccineCode: string;
             yearMonth: string;
         };
+        HealthUnitDoses: {
+            cnesCode: string;
+            /** Format: int64 */
+            doses?: number | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            suppressed: boolean;
+            unitName: string;
+        };
         HealthUnitVersion: {
             cnesCode: string;
             isActive: boolean;
@@ -270,6 +422,17 @@ export interface components {
             /** Format: date */
             validTo: string;
         };
+        MapArea: {
+            abbr?: string | null;
+            code: string;
+            denominator?: number | null;
+            name: string;
+            /** Format: int64 */
+            numerator?: number | null;
+            reason?: string | null;
+            suppressed: boolean;
+            value?: number | null;
+        };
         Me: {
             name?: string | null;
             roles: string[];
@@ -286,6 +449,12 @@ export interface components {
             /** Format: int32 */
             suppressedCells: number;
             synthetic: boolean;
+        };
+        Region: {
+            abbr?: string | null;
+            code: string;
+            level: string;
+            name: string;
         };
         Run: {
             command: string;
@@ -335,11 +504,12 @@ export interface components {
             /** Format: int64 */
             batchGeneration: number;
             /** Format: int64 */
-            dosesInPeriod: number;
+            dosesInPeriod?: number | null;
             /** Format: int64 */
-            dosesToday: number;
+            dosesToday?: number | null;
             /** Format: int64 */
-            liveDosesPending: number;
+            liveDosesPending?: number | null;
+            suppressedFields: string[];
             /** Format: date */
             today: string;
         };
@@ -355,9 +525,28 @@ export interface components {
         };
         TimeseriesPoint: {
             /** Format: int64 */
-            doses: number;
+            doses?: number | null;
             /** Format: date */
             periodStart: string;
+            suppressed: boolean;
+        };
+        Vaccine: {
+            doseLabel: string;
+            /** Format: int32 */
+            doseNumber: number;
+            isCoverageIndicator: boolean;
+            /** Format: int32 */
+            targetAgeYears?: number | null;
+            vaccineCode: string;
+            vaccineName: string;
+        };
+        VaccineDoses: {
+            doseLabel: string;
+            /** Format: int64 */
+            doses?: number | null;
+            suppressed: boolean;
+            vaccineCode: string;
+            vaccineName: string;
         };
     };
     responses: never;
@@ -392,6 +581,57 @@ export interface operations {
             };
         };
     };
+    byAgeBand: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                region?: string;
+                vaccine?: string;
+                dose?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAgeBandDoses"];
+                };
+            };
+        };
+    };
+    byVaccine: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                region?: string;
+                ageBand?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVaccineDoses"];
+                };
+            };
+        };
+    };
     timeseries: {
         parameters: {
             query: {
@@ -416,6 +656,63 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTimeseriesPoint"];
+                };
+            };
+        };
+    };
+    healthUnits: {
+        parameters: {
+            query: {
+                municipality: string;
+                from: string;
+                to: string;
+                vaccine?: string;
+                dose?: string;
+                ageBand?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseHealthUnitDoses"];
+                };
+            };
+        };
+    };
+    map: {
+        parameters: {
+            query: {
+                level: string;
+                state?: string;
+                metric: string;
+                year?: number;
+                from?: string;
+                to?: string;
+                vaccine?: string;
+                dose?: string;
+                ageBand?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMapArea"];
                 };
             };
         };
@@ -523,6 +820,38 @@ export interface operations {
             };
         };
     };
+    export: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                region?: string;
+                state?: string;
+                municipality?: string;
+                year?: number;
+                vaccine?: string;
+                dose?: string;
+                ageBand?: number;
+            };
+            header?: never;
+            path: {
+                dataset: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     history: {
         parameters: {
             query?: never;
@@ -561,6 +890,48 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiItemMe"];
+                };
+            };
+        };
+    };
+    regions: {
+        parameters: {
+            query?: {
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRegion"];
+                };
+            };
+        };
+    };
+    vaccines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVaccine"];
                 };
             };
         };
