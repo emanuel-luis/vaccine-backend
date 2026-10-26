@@ -9,5 +9,7 @@ describe('chart theme', () => {
     }
     expect(theme.valueAxis.axisLabel.formatter(10000)).toBe('10.000')
     expect(theme.tooltip.valueFormatter(104094)).toBe('104.094')
+    // Category labels (dates, names) must stay untouched.
+    expect((themeFromTokens() as { categoryAxis: { axisLabel: object } }).categoryAxis.axisLabel).not.toHaveProperty('formatter')
   })
 })
