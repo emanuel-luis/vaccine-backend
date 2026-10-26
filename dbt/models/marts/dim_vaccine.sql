@@ -13,7 +13,9 @@ with schedule as (
         max_age_days,
         min_interval_days,
         is_coverage_indicator,
-        coverage_target_age_years
+        coverage_target_age_years,
+        coverage_goal_pct,
+        goal_source
 
     from {{ ref('pni_child_schedule') }}
 
@@ -32,7 +34,9 @@ unknown_member as (
         cast(null as integer) as max_age_days,
         cast(null as integer) as min_interval_days,
         false as is_coverage_indicator,
-        cast(null as integer) as coverage_target_age_years
+        cast(null as integer) as coverage_target_age_years,
+        cast(null as numeric(5, 2)) as coverage_goal_pct,
+        cast(null as text) as goal_source
 
 ),
 
@@ -55,6 +59,8 @@ select
     max_age_days,
     min_interval_days,
     is_coverage_indicator,
-    coverage_target_age_years
+    coverage_target_age_years,
+    coverage_goal_pct,
+    goal_source
 
 from final

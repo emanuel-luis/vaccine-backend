@@ -1,0 +1,14 @@
+# Used instead of the root .dockerignore when building elt/Dockerfile (context = repository root).
+*
+!elt/pyproject.toml
+!elt/uv.lock
+!elt/.python-version
+!elt/src/
+!data/sources/
+!dbt/
+**/__pycache__
+**/.venv
+**/.pytest_cache
+dbt/target
+dbt/logs
+dbt/dbt_packages

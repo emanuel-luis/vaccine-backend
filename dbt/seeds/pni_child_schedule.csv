@@ -1,28 +1,28 @@
-vaccine_code,vaccine_name,dose_label,dose_number,recommended_age_days,min_age_days,max_age_days,min_interval_days,is_coverage_indicator,coverage_target_age_years,window_source
-BCG,BCG,DU,1,0,0,1825,,true,0,modeling assumption
-HEPB,Hepatite B,D0,1,0,0,30,,true,0,modeling assumption
-PENTA,Pentavalente (DTP/Hib/HB),D1,1,60,42,2554,,false,,NT 91/2026 (max age)
-PENTA,Pentavalente (DTP/Hib/HB),D2,2,120,72,2554,30,false,,NT 91/2026 (max age)
-PENTA,Pentavalente (DTP/Hib/HB),D3,3,180,102,2554,30,true,0,NT 91/2026 (max age)
-VIP,Poliomielite inativada (VIP),D1,1,60,42,1825,,false,,NT 91/2026 (max age)
-VIP,Poliomielite inativada (VIP),D2,2,120,72,1825,30,false,,NT 91/2026 (max age)
-VIP,Poliomielite inativada (VIP),D3,3,180,102,1825,30,true,0,NT 91/2026 (max age)
-VIP,Poliomielite inativada (VIP),REF1,4,455,365,1825,180,true,1,modeling assumption
-VIP,Poliomielite inativada (VIP),REF2,5,1460,1460,2189,180,true,4,modeling assumption
-PNEUMO,Pneumocócica conjugada,D1,1,60,42,1825,,false,,NT 91/2026 (max age)
-PNEUMO,Pneumocócica conjugada,D2,2,120,72,1825,30,true,0,NT 91/2026 (max age)
-PNEUMO,Pneumocócica conjugada,REF,3,365,365,1825,60,true,1,NT 91/2026 (max age)
-ROTA,Rotavírus humano,D1,1,60,45,364,,false,,NT 91/2026
-ROTA,Rotavírus humano,D2,2,120,105,729,30,true,0,NT 91/2026
-MENC,Meningocócica C,D1,1,90,42,1825,,false,,NT 91/2026 (max age)
-MENC,Meningocócica C,D2,2,150,72,1825,30,true,0,NT 91/2026 (max age)
-MENACWY,Meningocócica ACWY,REF,1,365,365,1825,,true,1,modeling assumption
-FA,Febre amarela,D1,1,270,270,1825,,true,0,modeling assumption
-FA,Febre amarela,REF,2,1460,1460,2189,30,true,4,modeling assumption
-SCR,Tríplice viral (sarampo/caxumba/rubéola),D1,1,365,365,2189,,true,1,modeling assumption
-SCR,Tríplice viral (sarampo/caxumba/rubéola),D2,2,455,395,2189,30,true,1,modeling assumption
-VARICELA,Varicela,D1,1,455,455,2554,,true,1,NT 87/2026 (max age)
-VARICELA,Varicela,D2,2,1460,1460,2554,90,true,4,NT 87/2026 (max age)
-HEPA,Hepatite A,DU,1,455,365,1825,,true,1,NT 87/2026 (max age)
-DTP,Tríplice bacteriana (DTP),REF1,1,455,455,2554,,true,1,NT 91/2026 (max age)
-DTP,Tríplice bacteriana (DTP),REF2,2,1460,1460,2554,180,true,4,NT 91/2026 (max age)
+vaccine_code,vaccine_name,dose_label,dose_number,recommended_age_days,min_age_days,max_age_days,min_interval_days,is_coverage_indicator,coverage_target_age_years,window_source,coverage_goal_pct,goal_source
+BCG,BCG,DU,1,0,0,1825,,true,0,modeling assumption,90,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+HEPB,Hepatite B,D0,1,0,0,30,,true,0,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+PENTA,Pentavalente (DTP/Hib/HB),D1,1,60,42,2554,,false,,NT 91/2026 (max age),,
+PENTA,Pentavalente (DTP/Hib/HB),D2,2,120,72,2554,30,false,,NT 91/2026 (max age),,
+PENTA,Pentavalente (DTP/Hib/HB),D3,3,180,102,2554,30,true,0,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+VIP,Poliomielite inativada (VIP),D1,1,60,42,1825,,false,,NT 91/2026 (max age),,
+VIP,Poliomielite inativada (VIP),D2,2,120,72,1825,30,false,,NT 91/2026 (max age),,
+VIP,Poliomielite inativada (VIP),D3,3,180,102,1825,30,true,0,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+VIP,Poliomielite inativada (VIP),REF1,4,455,365,1825,180,true,1,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+VIP,Poliomielite inativada (VIP),REF2,5,1460,1460,2189,180,true,4,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+PNEUMO,Pneumocócica conjugada,D1,1,60,42,1825,,false,,NT 91/2026 (max age),,
+PNEUMO,Pneumocócica conjugada,D2,2,120,72,1825,30,true,0,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+PNEUMO,Pneumocócica conjugada,REF,3,365,365,1825,60,true,1,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+ROTA,Rotavírus humano,D1,1,60,45,364,,false,,NT 91/2026,,
+ROTA,Rotavírus humano,D2,2,120,105,729,30,true,0,NT 91/2026,90,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+MENC,Meningocócica C,D1,1,90,42,1825,,false,,NT 91/2026 (max age),,
+MENC,Meningocócica C,D2,2,150,72,1825,30,true,0,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+MENACWY,Meningocócica ACWY,REF,1,365,365,1825,,true,1,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+FA,Febre amarela,D1,1,270,270,1825,,true,0,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+FA,Febre amarela,REF,2,1460,1460,2189,30,true,4,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+SCR,Tríplice viral (sarampo/caxumba/rubéola),D1,1,365,365,2189,,true,1,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+SCR,Tríplice viral (sarampo/caxumba/rubéola),D2,2,455,395,2189,30,true,1,modeling assumption,95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+VARICELA,Varicela,D1,1,455,455,2554,,true,1,NT 87/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+VARICELA,Varicela,D2,2,1460,1460,2554,90,true,4,NT 87/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+HEPA,Hepatite A,DU,1,455,365,1825,,true,1,NT 87/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+DTP,Tríplice bacteriana (DTP),REF1,1,455,455,2554,,true,1,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"
+DTP,Tríplice bacteriana (DTP),REF2,2,1460,1460,2554,180,true,4,NT 91/2026 (max age),95,"PNI coverage goal (90% BCG and rotavirus, 95% others); exact source to be confirmed"

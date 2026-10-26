@@ -45,3 +45,7 @@ seeds:
         description: Age cohort in completed years the indicator measures.
       - name: window_source
         description: Source or assumption behind the age window.
+      - name: coverage_goal_pct
+        description: Coverage goal in percent for the indicator dose; empty when the dose is not an indicator.
+      - name: goal_source
+        description: Where the goal comes from (status to be confirmed, see docs/data-sources.md).

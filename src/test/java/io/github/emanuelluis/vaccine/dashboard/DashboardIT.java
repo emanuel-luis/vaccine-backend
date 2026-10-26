@@ -89,6 +89,10 @@ class DashboardIT {
                 .andExpect(jsonPath("$.data[3].doseNumber").value(3))
                 .andExpect(jsonPath("$.data[3].isCoverageIndicator").value(true))
                 .andExpect(jsonPath("$.data[3].targetAgeYears").value(1))
+                .andExpect(jsonPath("$.data[3].coverageGoalPct").value(95.0))
+                .andExpect(jsonPath("$.data[5].vaccineCode").value("ROTA"))
+                .andExpect(jsonPath("$.data[5].coverageGoalPct").value(90.0))
+                .andExpect(jsonPath("$.data[0].coverageGoalPct").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.data[0].isCoverageIndicator").value(false));
     }
 
