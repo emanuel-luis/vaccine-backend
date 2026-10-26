@@ -1,6 +1,7 @@
 package io.github.emanuelluis.vaccine.web;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Envelope of every list endpoint: the rows plus where they come from and whether they are synthetic.
@@ -22,7 +23,12 @@ public record ApiResponse<T>(List<T> data, Meta meta) {
      * @param suppressedCells cells hidden by small-number suppression (0 until PR2+)
      */
     public record Meta(
-            String source, boolean synthetic, int count, String layer, Long batchGeneration, int suppressedCells) {}
+            String source,
+            boolean synthetic,
+            int count,
+            String layer,
+            @Nullable Long batchGeneration,
+            int suppressedCells) {}
 
     public static <T> ApiResponse<T> of(String source, boolean synthetic, List<T> data) {
         return new ApiResponse<>(data, new Meta(source, synthetic, data.size(), LAYER_BATCH, null, 0));

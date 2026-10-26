@@ -3,6 +3,7 @@ package io.github.emanuelluis.vaccine.security;
 import io.github.emanuelluis.vaccine.web.ApiItem;
 import io.github.emanuelluis.vaccine.web.ApiResponse;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,10 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     /** Region scope for the UI; {@code state} and {@code municipalityCode} are null when they do not apply. */
-    public record ScopeView(String level, String state, Integer municipalityCode, String label) {}
+    public record ScopeView(
+            String level, @Nullable String state, @Nullable Integer municipalityCode, String label) {}
 
     /** Data of {@code /me}; {@code scope} is null when the token has no valid region_scope. */
-    public record Me(String username, String name, List<String> roles, ScopeView scope) {}
+    public record Me(
+            String username,
+            @Nullable String name,
+            List<String> roles,
+            @Nullable ScopeView scope) {}
 
     @GetMapping
     public ApiItem<Me> me(@AuthenticationPrincipal Jwt jwt) {
