@@ -80,6 +80,14 @@ there; where the `window_source` column says "modeling assumption", the window i
 choice for the synthetic generator, not an official rule. COVID-19 and influenza are left out
 (not part of the routine coverage indicators).
 
+Coverage goals (`coverage_goal_pct`, `goal_source`, indicator doses only): 90% for BCG and
+rotavirus, 95% for every other indicator dose, the PNI targets as commonly published. Status: to be
+confirmed. The exact publication behind these numbers is not recorded yet because the repository
+cannot fetch the gov.br pages reliably; the seed says so in `goal_source` ("PNI coverage goal (90%
+BCG and rotavirus, 95% others); exact source to be confirmed"). The low-coverage alerts and the
+goal bars of the web app depend on these values, so confirm them before presenting the alerts as
+official.
+
 - Calendar: <https://www.gov.br/saude/pt-br/vacinacao/calendario>
 - NT 87/2026 and NT 91/2026 (CGICI/DPNI/SVSA/MS), as republished by the Porto Alegre health
   department: <https://prefeitura.poa.br/sites/default/files/usu_doc/hotsites/sms/vigilancia-em-saude/Nota%20T%C3%A9cnica%2087.2026%20Regras%20CV.pdf>,

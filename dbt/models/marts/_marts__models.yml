@@ -223,6 +223,12 @@ models:
       - name: coverage_target_age_years
         description: Age cohort in completed years the indicator measures; null when not an indicator dose.
         data_type: integer
+      - name: coverage_goal_pct
+        description: Coverage goal in percent (90 BCG and rotavirus, 95 others); null when not an indicator dose. Source status to be confirmed.
+        data_type: numeric(5,2)
+      - name: goal_source
+        description: Where the goal comes from; null when not an indicator dose.
+        data_type: text
 
   - name: dim_demographic
     description: >
