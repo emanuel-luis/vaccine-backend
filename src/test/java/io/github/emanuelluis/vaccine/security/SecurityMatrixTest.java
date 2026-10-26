@@ -1,6 +1,7 @@
 package io.github.emanuelluis.vaccine.security;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -11,10 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.emanuelluis.vaccine.Auth;
 import io.github.emanuelluis.vaccine.analytics.AnalyticsRepository;
+import io.github.emanuelluis.vaccine.dashboard.DashboardRows.Rows;
 import io.github.emanuelluis.vaccine.dashboard.MergedDosesRepository;
 import io.github.emanuelluis.vaccine.ingest.DoseIngestRepository;
 import io.github.emanuelluis.vaccine.ingest.DoseValidator;
 import io.github.emanuelluis.vaccine.live.LiveEventHub;
+import io.github.emanuelluis.vaccine.reference.ReferenceRepository;
 import io.github.emanuelluis.vaccine.units.HealthUnitController.HealthUnitVersion;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -71,6 +74,71 @@ class SecurityMatrixTest {
                 row("GET /api/v1/dashboard/summary?" + RANGE, 401, 200, 200, 200, 200, 403),
                 row("GET /api/v1/dashboard/doses/timeseries?" + RANGE, 401, 200, 200, 200, 200, 403),
                 row("GET /api/v1/stream", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/reference/regions", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/reference/regions?state=BA", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/reference/regions?state=SP", 401, 403, 403, 200, 200, 403),
+                row("GET /api/v1/reference/vaccines", 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/dashboard/doses/by-vaccine?" + RANGE, 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/dashboard/doses/by-age-band?" + RANGE, 401, 200, 200, 200, 200, 403),
+                // the state map is state grain: municipality callers are out
+                row("GET /api/v1/dashboard/map?level=state&metric=doses&" + RANGE, 401, 403, 200, 200, 200, 403),
+                row(
+                        "GET /api/v1/dashboard/map?level=state&metric=coverage&vaccine=PENTA&dose=D3",
+                        401,
+                        403,
+                        200,
+                        200,
+                        200,
+                        403),
+                row(
+                        "GET /api/v1/dashboard/map?level=municipality&state=BA&metric=doses&" + RANGE,
+                        401,
+                        200,
+                        200,
+                        200,
+                        200,
+                        403),
+                row(
+                        "GET /api/v1/dashboard/map?level=municipality&state=SP&metric=doses&" + RANGE,
+                        401,
+                        403,
+                        403,
+                        200,
+                        200,
+                        403),
+                row(
+                        "GET /api/v1/dashboard/map?level=municipality&state=BA&metric=coverage&vaccine=PENTA&dose=D3",
+                        401,
+                        200,
+                        200,
+                        200,
+                        200,
+                        403),
+                row("GET /api/v1/dashboard/map?level=municipality&metric=doses&" + RANGE, 401, 400, 400, 400, 400, 403),
+                row(
+                        "GET /api/v1/dashboard/map?level=municipality&state=BA&metric=coverage",
+                        401,
+                        400,
+                        400,
+                        400,
+                        400,
+                        403),
+                row("GET /api/v1/dashboard/map?level=municipality&state=BA&metric=doses", 401, 400, 400, 400, 400, 403),
+                row("GET /api/v1/dashboard/health-units?municipality=2927408&" + RANGE, 401, 200, 200, 200, 200, 403),
+                row("GET /api/v1/dashboard/health-units?municipality=3550308&" + RANGE, 401, 403, 403, 200, 200, 403),
+                // exports are gestor only
+                row("GET /api/v1/exports/doses-daily?" + RANGE, 401, 403, 403, 200, 403, 403),
+                row("GET /api/v1/exports/doses-daily", 401, 403, 403, 400, 403, 403),
+                row("GET /api/v1/exports/nothing", 401, 403, 403, 404, 403, 403),
+                row(
+                        "GET /api/v1/exports/coverage-municipality?state=BA&vaccine=PENTA&dose=D3&year=2026",
+                        401,
+                        403,
+                        403,
+                        200,
+                        403,
+                        403),
+                row("GET /api/v1/exports/health-units?municipality=2927408&" + RANGE, 401, 403, 403, 200, 403, 403),
                 // state grain (S>=UF): municipality callers are out
                 row("GET /api/v1/doses/by-state-month?" + MONTHS, 401, 403, 200, 200, 200, 403),
                 row("GET /api/v1/doses/by-age-band?" + MONTHS, 401, 403, 200, 200, 200, 403),
@@ -105,6 +173,9 @@ class SecurityMatrixTest {
     private MergedDosesRepository merged;
 
     @MockitoBean
+    private ReferenceRepository reference;
+
+    @MockitoBean
     private DoseValidator validator;
 
     @MockitoBean
@@ -120,8 +191,12 @@ class SecurityMatrixTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     void stubRepositories() {
         when(merged.summary(any(), any(), any(), any())).thenReturn(new MergedDosesRepository.Summary(0, 0, 0, 0));
-        when(merged.timeseries(any(), any(), anyString(), any()))
-                .thenReturn(new MergedDosesRepository.Timeseries(0, List.of()));
+        when(merged.timeseries(any(), any(), anyString(), any())).thenReturn(Rows.empty());
+        when(merged.byVaccine(any(), any(), any())).thenReturn(Rows.empty());
+        when(merged.byAgeBand(any(), any(), any())).thenReturn(Rows.empty());
+        when(merged.map(any())).thenReturn(Rows.empty());
+        when(merged.healthUnits(any(), any(), any())).thenReturn(Rows.empty());
+        when(merged.dosesDaily(any(), any(), any(), anyInt())).thenReturn(Rows.empty());
         // JdbcClient: sql(..).param(..).query(X).list() answers one unit for the unit query, nothing else.
         var spec = mock(JdbcClient.StatementSpec.class);
         var empty = mock(JdbcClient.MappedQuerySpec.class);
@@ -178,6 +253,21 @@ class SecurityMatrixTest {
                     .as("%s as %s", endpoint, CALLERS[i])
                     .isEqualTo(expected[i]);
         }
+    }
+
+    @Test
+    void exportIsAnExcelFriendlyCsvAttachment() throws Exception {
+        var result = mvc.perform(get("/api/v1/exports/doses-daily?" + RANGE).with(caller(3)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
+        org.assertj.core.api.Assertions.assertThat(result.getContentType()).isEqualTo("text/csv;charset=UTF-8");
+        org.assertj.core.api.Assertions.assertThat(result.getHeader("Content-Disposition"))
+                .matches("attachment; filename=\"doses-daily-\\d{4}-\\d{2}-\\d{2}\\.csv\"");
+        byte[] body = result.getContentAsByteArray();
+        org.assertj.core.api.Assertions.assertThat(body).startsWith(0xEF, 0xBB, 0xBF);
+        org.assertj.core.api.Assertions.assertThat(new String(body, java.nio.charset.StandardCharsets.UTF_8))
+                .startsWith("﻿date_day;state;municipality_code;cnes_code;");
     }
 
     @Test

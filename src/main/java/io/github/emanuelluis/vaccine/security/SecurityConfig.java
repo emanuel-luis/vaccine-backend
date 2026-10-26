@@ -37,6 +37,7 @@ public class SecurityConfig {
         "/api/v1/me",
         "/api/v1/stream",
         "/api/v1/dashboard/**",
+        "/api/v1/reference/**",
         "/api/v1/doses/by-state-month",
         "/api/v1/doses/by-age-band",
         "/api/v1/coverage",
@@ -55,6 +56,8 @@ public class SecurityConfig {
                         .hasRole(DOSE_INGEST)
                         .requestMatchers("/api/v1/runs/**")
                         .hasRole(DATA_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/exports/**")
+                        .hasRole(GESTOR)
                         // Explicit paths only: a new endpoint stays denied until it gets a rule here.
                         .requestMatchers(HttpMethod.GET, READER_PATHS)
                         .hasAnyRole(PROFISSIONAL, GESTOR, DATA_ADMIN)
