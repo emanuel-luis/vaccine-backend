@@ -106,10 +106,17 @@ def _replace_table(
     return results
 
 
-def load_reference(conn: psycopg.Connection[Any], directory: Path) -> list[runlog.SourceResult]:
+def load_reference(
+    conn: psycopg.Connection[Any],
+    directory: Path,
+    on_start: Callable[[uuid.UUID], None] | None = None,
+) -> list[runlog.SourceResult]:
+    """`on_start` receives the run id as soon as the run row exists (the worker links its job)."""
     manifest = read_manifest(directory)
     params = {"sources": {entry.id: entry.sha256 for entry in manifest.sources}}
     run_id = runlog.start_run(conn, "load-reference", params)
+    if on_start:
+        on_start(run_id)
     log.info("run %s: load-reference from %s", run_id, directory)
     try:
         verify(directory, manifest)
@@ -151,6 +158,7 @@ def load_reference(conn: psycopg.Connection[Any], directory: Path) -> list[runlo
             (CNES_UNIT_SNAPSHOT, cnes_sources),
         ):
             results.extend(_replace_table(conn, run_id, contract, sources))
+        runlog.record_run_sources(conn, run_id, manifest.sources)
     except BaseException as exc:
         runlog.finish_run(conn, run_id, error=f"{type(exc).__name__}: {exc}")
         raise
