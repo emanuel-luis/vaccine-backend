@@ -31,13 +31,50 @@
   "clientScopes": [
     {
       "name": "vaccine-api",
-      "description": "Claims the vaccine API reads: roles, audience, region_scope",
+      "description": "Claims the API and the SPA read: sub, preferred_username, name, roles, audience, region_scope. Declaring clientScopes in the import skips Keycloak's built-in scopes (basic, profile, roles), so this scope carries their claims.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
         "display.on.consent.screen": "false"
       },
       "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
         {
           "name": "realm roles",
           "protocol": "openid-connect",
