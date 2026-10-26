@@ -102,14 +102,14 @@ describe('Cobertura', () => {
     mockFetch(routes())
     show('/cobertura', ['gestor'])
     await screen.findByRole('navigation', { name: 'Áreas do mapa' })
-    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Exportar/ })).toBeNull()
   })
 
   it('gestor can export a state coverage', async () => {
     mockFetch(routes())
     show('/cobertura/BA', ['gestor'])
     await screen.findByRole('navigation', { name: 'Áreas do mapa' })
-    expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar municípios (CSV)' })).toBeInTheDocument()
   })
 
   it('coverage mode ignores faixa from the URL: no ageBand on the map request, map renders', async () => {
@@ -129,8 +129,7 @@ describe('Cobertura', () => {
     const fetchMock = mockFetch({ ...routes(), '/api/v1/exports/health-units': {} })
     show('/cobertura/BA/2927408', ['gestor'])
     await screen.findByRole('table', { name: 'Unidades de saúde do município' })
-    const buttons = screen.getAllByRole('button', { name: 'Exportar CSV' })
-    await userEvent.click(buttons.at(-1)!)
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar unidades (CSV)' }))
     await vi.waitFor(() => {
       const u = fetchMock.mock.calls
         .map(([r]) => new URL(r instanceof Request ? r.url : String(r), 'http://x'))
@@ -144,7 +143,7 @@ describe('Cobertura', () => {
     mockFetch(routes())
     show('/cobertura/BA', ['profissional'])
     await screen.findByRole('navigation', { name: 'Áreas do mapa' })
-    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Exportar/ })).toBeNull()
   })
 
   it('sends a municipality-scoped user to their municipality', async () => {
