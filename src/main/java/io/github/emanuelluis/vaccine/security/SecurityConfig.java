@@ -32,6 +32,17 @@ public class SecurityConfig {
     public static final String DATA_ADMIN = "data-admin";
     public static final String DOSE_INGEST = "dose-ingest";
 
+    /** Read endpoints open to every user role (scope still applies through ScopeGuard). */
+    static final String[] READER_PATHS = {
+        "/api/v1/me",
+        "/api/v1/stream",
+        "/api/v1/dashboard/**",
+        "/api/v1/doses/by-state-month",
+        "/api/v1/doses/by-age-band",
+        "/api/v1/coverage",
+        "/api/v1/health-units/*/history"
+    };
+
     @Bean
     SecurityFilterChain api(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
@@ -44,7 +55,8 @@ public class SecurityConfig {
                         .hasRole(DOSE_INGEST)
                         .requestMatchers("/api/v1/runs/**")
                         .hasRole(DATA_ADMIN)
-                        .requestMatchers("/api/v1/**")
+                        // Explicit paths only: a new endpoint stays denied until it gets a rule here.
+                        .requestMatchers(HttpMethod.GET, READER_PATHS)
                         .hasAnyRole(PROFISSIONAL, GESTOR, DATA_ADMIN)
                         .anyRequest()
                         .denyAll())
