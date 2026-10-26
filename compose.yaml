@@ -116,5 +116,28 @@ services:
       start_period: 30s
       retries: 3
 
+  worker:
+    build:
+      context: .
+      dockerfile: elt/Dockerfile
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy  # Flyway has applied the ops.job tables
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-vaccine}
+      PGUSER: ${POSTGRES_USER:-vaccine}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
+    healthcheck:
+      # The heartbeat thread touches /tmp/worker-alive every 10 s; unhealthy when older than 30 s.
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(time.time() - os.stat('/tmp/worker-alive').st_mtime > 30)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
 volumes:
   pgdata:

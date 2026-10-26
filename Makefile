@@ -7,6 +7,7 @@ UV := uv run --project elt
 DBT := $(UV) dbt
 # dbt takes these options after the subcommand only: `$(DBT) <command> $(DBT_DIRS)`.
 DBT_DIRS := --project-dir dbt --profiles-dir dbt
+DBT_RESULTS := dbt/target/run_results.json
 API_URL ?= http://localhost:8080
 KEYCLOAK_URL ?= http://localhost:8180
 ROWS ?= 200000
@@ -22,7 +23,7 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
-	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi simulate \
+	load-reference generate dbt-deps dbt-build worker reconcile demo smoke speed-check openapi simulate \
 	web-install web-lint web-test web-build
 
 help: ## Show this help
@@ -78,8 +79,11 @@ generate: env ## Replace the synthetic events, lots and receipts (ROWS, SEED)
 dbt-deps: ## Install dbt packages (dbt_utils)
 	$(NO_DB) $(DBT) deps $(DBT_DIRS)
 
-dbt-build: env dbt-deps ## Build and test staging, intermediate and marts
-	$(WITH_PG) $(DBT) build $(DBT_DIRS)
+dbt-build: env dbt-deps ## Build and test staging, intermediate and marts, then record the results in ops
+	$(WITH_PG) rm -f $(DBT_RESULTS) && { 		$(DBT) build $(DBT_DIRS); status=$$?; 		if [ -f $(DBT_RESULTS) ]; then 			$(UV) vaccine-elt record-dbt-results --run-results $(DBT_RESULTS) 				|| echo "warning: dbt results were not recorded" >&2; 		fi; 		exit $$status; }
+
+worker: env ## Run the data-management worker from the host (needs the stack's Postgres; Ctrl-C stops)
+	$(WITH_PG) $(UV) vaccine-elt worker
 
 reconcile: env ## Check live.dose_daily and the serving merge against the landing tables (exit 1 on a diff)
 	$(WITH_PG) $(UV) vaccine-elt reconcile
