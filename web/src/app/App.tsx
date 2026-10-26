@@ -3,9 +3,15 @@ import { useState } from 'react'
 import { AuthProvider } from 'react-oidc-context'
 import { BrowserRouter } from 'react-router'
 import { shouldRetry } from '../api/client'
+import { useSession } from '../auth/session'
 import { restoreReturnPath } from '../auth/returnTo'
 import { type AppConfig, ConfigContext } from '../config'
+import { LiveProvider } from '../live/LiveProvider'
 import { AppRoutes } from './routes'
+
+function Live({ children }: { children: React.ReactNode }) {
+  return <LiveProvider scope={useSession().scope}>{children}</LiveProvider>
+}
 
 export function App({ config }: { config: AppConfig }) {
   const [queryClient] = useState(
@@ -25,9 +31,11 @@ export function App({ config }: { config: AppConfig }) {
     <ConfigContext.Provider value={config}>
       <AuthProvider {...oidc}>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <Live>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </Live>
         </QueryClientProvider>
       </AuthProvider>
     </ConfigContext.Provider>
