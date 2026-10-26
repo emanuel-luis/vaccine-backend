@@ -1,19 +1,28 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { createParser } from 'eventsource-parser'
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
 import { useConfig } from '../config'
 import { type Scope } from '../auth/claims'
 
 export type LiveState = 'live' | 'reconnecting' | 'paused'
 
+/** What pages can listen to: `job` events (data-admin only) and `ready`, sent on every (re)connection. */
+export type JobStreamEvent =
+  | { type: 'ready' }
+  | { type: 'job'; jobId: string; kind: string; status: string; seq?: number; level?: string; message?: string }
+
+export type JobListener = (event: JobStreamEvent) => void
+
 export interface LiveValue {
   status: LiveState
   /** Doses seen on the stream in the last 5 minutes; refreshed at most every 30 s. */
   recentDoses: number
+  /** Registers a listener for job events and `ready`; returns the unsubscribe function. */
+  subscribe: (listener: JobListener) => () => void
 }
 
-const LiveContext = createContext<LiveValue>({ status: 'paused', recentDoses: 0 })
+const LiveContext = createContext<LiveValue>({ status: 'paused', recentDoses: 0, subscribe: () => () => {} })
 
 export function useLive(): LiveValue {
   return useContext(LiveContext)
@@ -83,6 +92,11 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
   const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
   const entries = useRef<{ at: number; total: number }[]>([])
   const region = regionOf(scope)
+  const listeners = useRef(new Set<JobListener>())
+  const subscribe = useCallback((l: JobListener) => {
+    listeners.current.add(l)
+    return () => void listeners.current.delete(l)
+  }, [])
 
   useEffect(() => {
     const onChange = () => setVisible(document.visibilityState !== 'hidden')
@@ -116,6 +130,7 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
         attempt = 0
         setConn('live')
         void qc.invalidateQueries({ queryKey: ['live'] })
+        listeners.current.forEach((l) => l({ type: 'ready' }))
       } else if (type === 'doses') {
         if (typeof body.total === 'number') entries.current.push({ at: Date.now(), total: body.total })
         ticker.call()
@@ -123,6 +138,24 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
       } else if (type === 'batch') {
         void qc.invalidateQueries({ queryKey: ['live'] })
         void qc.invalidateQueries({ queryKey: ['alerts'] })
+      } else if (type === 'job' && typeof body.jobId === 'string' && typeof body.status === 'string') {
+        const seq = typeof body.seq === 'number' ? body.seq : undefined
+        const str = (v: unknown) => (typeof v === 'string' ? v : undefined)
+        const event: JobStreamEvent = {
+          type: 'job',
+          jobId: body.jobId,
+          kind: str(body.kind) ?? '',
+          status: body.status,
+          seq,
+          level: str(body.level),
+          message: str(body.message),
+        }
+        listeners.current.forEach((l) => l(event))
+        // A status change (no seq) refreshes the jobs list and the open job; log lines do not.
+        if (seq === undefined) {
+          void qc.invalidateQueries({ queryKey: ['admin', 'jobs'] })
+          void qc.invalidateQueries({ queryKey: ['admin', 'job', body.jobId] })
+        }
       }
     }
 
@@ -165,6 +198,6 @@ export function LiveProvider({ children, scope }: { children: ReactNode; scope: 
   }, [token, visible, region, apiBaseUrl, qc])
 
   const status: LiveState = token && visible ? conn : 'paused'
-  const value = useMemo(() => ({ status, recentDoses }), [status, recentDoses])
+  const value = useMemo(() => ({ status, recentDoses, subscribe }), [status, recentDoses, subscribe])
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>
 }
