@@ -51,6 +51,14 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # The MapLibre worker is a module worker (.mjs); nginx's default mime types serve it as
+    # octet-stream, which browsers refuse for a module script.
+    location ~ ^/assets/.+\.mjs$ {
+        default_type text/javascript;
+        expires 1y;
+        try_files $uri =404;
+    }
+
     # Hashed build output.
     location /assets/ {
         expires 1y;

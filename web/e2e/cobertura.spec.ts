@@ -4,6 +4,8 @@ import { authFile } from './users'
 test.use({ storageState: authFile('gestor.nacional') })
 
 test('drills Brasil, Bahia, Salvador and the unit table with the keyboard', async ({ page }) => {
+  const errors: string[] = []
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
   await page.goto('/cobertura')
   await expect(page.getByRole('heading', { level: 1, name: 'Mapa de cobertura' })).toBeVisible()
   await expect(page.locator('.maplibregl-canvas').first()).toBeVisible()
@@ -22,4 +24,6 @@ test('drills Brasil, Bahia, Salvador and the unit table with the keyboard', asyn
     page.getByRole('table', { name: 'Unidades de saúde do município' }).locator('tbody tr').first(),
   ).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Navegação por região' })).toContainText('Salvador')
+  // A map worker blocked by the server (wrong MIME type, missing asset) only shows up in the console.
+  expect(errors.filter((e) => /worker/i.test(e))).toEqual([])
 })

@@ -1,4 +1,5 @@
-import { Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl'
+import { Map as MapLibreMap, type MapLayerMouseEvent, setWorkerUrl } from 'maplibre-gl'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState } from 'react'
 import { type AreaState, bbox, OUTSIDE_COLOR } from './scale'
@@ -18,6 +19,9 @@ export interface MapCanvasProps {
 }
 
 const SOURCE = 'areas'
+
+// Vite does not emit the worker next to the chunk, so ship it as an asset and point MapLibre at it.
+setWorkerUrl(workerUrl)
 
 /** 8x8 diagonal hatch, drawn over suppressed areas. */
 function hatchImage() {
