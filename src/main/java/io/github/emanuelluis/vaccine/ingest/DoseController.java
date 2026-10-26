@@ -63,6 +63,14 @@ public class DoseController {
             outcome = repository.insert(CLIENT_ID, key, hash, request, validated);
         } catch (DuplicateKeyException e) {
             if (String.valueOf(e.getMessage()).contains("ux_live_dose_person_dose")) {
+                // A concurrent request with the same key can pass the lookup above and commit first:
+                // ON CONFLICT only arbitrates the key index, so this insert trips the person-dose
+                // index instead. Postgres raises it after the other transaction committed, so the
+                // key is visible now and the request is a replay, not a second dose.
+                var concurrent = repository.find(CLIENT_ID, key);
+                if (concurrent.isPresent()) {
+                    return replay(concurrent.get(), hash);
+                }
                 throw new ConflictException(
                         "dose_already_registered", "this person already has this vaccine dose registered");
             }
