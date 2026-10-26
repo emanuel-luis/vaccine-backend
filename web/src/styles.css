@@ -599,3 +599,150 @@ h1 {
     height: 20rem;
   }
 }
+
+.live-ticker {
+  min-width: 6rem;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-ticker-value {
+    animation: ticker-flash 1.2s ease-out;
+  }
+
+  @keyframes ticker-flash {
+    from {
+      background: var(--ok-bg);
+    }
+    to {
+      background: transparent;
+    }
+  }
+}
+
+.cov {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 11rem;
+}
+
+.cov-track {
+  position: relative;
+  flex: 1;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--idle-bg);
+}
+
+.cov-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.cov-goal {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text);
+}
+
+.cov-num {
+  min-width: 3.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  flex: 1;
+  height: 0.625rem;
+  accent-color: var(--primary);
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border-color: var(--primary);
+}
+
+.btn-danger {
+  background: var(--err-bg);
+  color: var(--err-fg);
+  border-color: var(--err-fg);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.campaign-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 32rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-field label {
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field select {
+  min-height: 2.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.form-field [aria-invalid='true'] {
+  border-color: var(--err-fg);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--err-fg);
+  font-size: 0.875rem;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 50%);
+}
+
+.dialog {
+  width: min(28rem, 100%);
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

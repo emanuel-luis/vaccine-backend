@@ -11,6 +11,11 @@ import { Sobre } from '../pages/Sobre'
 // Dashboards (ECharts) and the map (MapLibre) stay out of the initial bundle.
 const Painel = lazy(() => import('../pages/Painel').then((m) => ({ default: m.Painel })))
 const Cobertura = lazy(() => import('../pages/Cobertura').then((m) => ({ default: m.Cobertura })))
+const Alertas = lazy(() => import('../pages/Alertas').then((m) => ({ default: m.Alertas })))
+const Campanhas = lazy(() => import('../pages/Campanhas').then((m) => ({ default: m.Campanhas })))
+const CampanhaDetalhe = lazy(() => import('../pages/CampanhaDetalhe').then((m) => ({ default: m.CampanhaDetalhe })))
+const CampanhaNova = lazy(() => import('../pages/CampanhaForm').then((m) => ({ default: m.CampanhaNova })))
+const CampanhaEditar = lazy(() => import('../pages/CampanhaForm').then((m) => ({ default: m.CampanhaEditar })))
 const lazyPage = (el: React.ReactNode) => <Suspense fallback={<StatePanel state="loading" />}>{el}</Suspense>
 
 const page = (title: string) => <Placeholder title={title} />
@@ -26,13 +31,13 @@ export function AppRoutes() {
           <Route path="cobertura" element={lazyPage(<Cobertura />)} />
           <Route path="cobertura/:uf" element={lazyPage(<Cobertura />)} />
           <Route path="cobertura/:uf/:municipio" element={lazyPage(<Cobertura />)} />
-          <Route path="alertas" element={page('Alertas de baixa cobertura')} />
-          <Route path="campanhas" element={page('Campanhas')} />
+          <Route path="alertas" element={lazyPage(<Alertas />)} />
+          <Route path="campanhas" element={lazyPage(<Campanhas />)} />
           <Route element={<RequireRole roles={['gestor']} />}>
-            <Route path="campanhas/nova" element={page('Nova campanha')} />
-            <Route path="campanhas/:id/editar" element={page('Editar campanha')} />
+            <Route path="campanhas/nova" element={lazyPage(<CampanhaNova />)} />
+            <Route path="campanhas/:id/editar" element={lazyPage(<CampanhaEditar />)} />
           </Route>
-          <Route path="campanhas/:id" element={page('Progresso da campanha')} />
+          <Route path="campanhas/:id" element={lazyPage(<CampanhaDetalhe />)} />
           <Route path="dados" element={<RequireRole roles={['data-admin']} />}>
             <Route path="fontes" element={page('Fontes de dados')} />
             <Route path="execucoes" element={page('Execuções')} />
