@@ -124,7 +124,7 @@ The simulator posts synthetic doses to the API. Each dose is written in one tran
 
 Reference data is public (IBGE Localidades, Censo 2022 via SIDRA, CNES extracts, attributed to IBGE and the Ministry of Health). Vaccination events, lots and receipts are synthetic, so no number here is real coverage.
 
-`make demo` generates about 0.2% of a national birth cohort (`ops.load_run.sample_fraction` is 0.0018 with the default 200k rows; see [docs/data-model.md](docs/data-model.md)). Coverage denominators are scaled by that fraction. State-level coverage is meaningful; municipality-level coverage is mostly noise, because many small municipalities read 0% or are suppressed.
+`make demo` generates about 0.2% of a national birth cohort (`ops.load_run.sample_fraction` is 0.0018 with the default 200k rows; see [docs/data-model.md](docs/data-model.md)). Coverage denominators are scaled by that fraction. State-level coverage is close to the generator's take-up for the larger states, but small states such as Acre or Amapá can land above 100% from sampling noise. Municipality-level coverage is mostly noise: many small municipalities read 0% or are suppressed.
 
 The coverage goals and the terms of use of the IBGE and CNES sources are still to be confirmed, see [docs/data-sources.md](docs/data-sources.md).
 
