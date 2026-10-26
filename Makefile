@@ -10,6 +10,7 @@ DBT_DIRS := --project-dir dbt --profiles-dir dbt
 API_URL ?= http://localhost:8080
 KEYCLOAK_URL ?= http://localhost:8180
 ROWS ?= 200000
+RATE ?= 2
 SEED ?= 42
 
 # Load .env and map it to the libpq variables read by the ELT and dbt, so the password is defined
@@ -21,7 +22,8 @@ WITH_PG = set -a && . ./.env && set +a && \
 NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
-	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi \n	web-install web-lint web-test web-build
+	load-reference generate dbt-deps dbt-build reconcile demo smoke speed-check openapi simulate \
+	web-install web-lint web-test web-build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -89,6 +91,11 @@ smoke: ## Call every API endpoint with a Keycloak token and require rows (stack 
 
 speed-check: ## Post 3 doses, check today +3, run dbt-build + reconcile, check the total is unchanged
 	KEYCLOAK_URL=$(KEYCLOAK_URL) bash scripts/speed-check.sh $(API_URL)
+
+simulate: env ## Run the simulator from the host against the running stack (RATE, MAX_DOSES; Ctrl-C stops)
+	set -a && . ./.env && set +a && API_URL=$(API_URL) \
+	TOKEN_URL=$(KEYCLOAK_URL)/realms/vaccine/protocol/openid-connect/token \
+	$(UV) vaccine-elt simulate --rate $(RATE) $(if $(MAX_DOSES),--max-doses $(MAX_DOSES))
 
 openapi: ## Regenerate docs/api/openapi.json from the controllers (no Docker needed; commit the result)
 	$(MVN) test-compile failsafe:integration-test failsafe:verify -Dit.test=OpenApiSpecIT -Dopenapi.write=true

@@ -10,6 +10,11 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib-token.sh
 . scripts/lib-token.sh
 load_env
+# The simulator posts doses too: stop it so the counts below are exact, restart it on exit.
+if docker compose config --services 2>/dev/null | grep -qx simulator; then
+  docker compose stop simulator
+  trap 'docker compose start simulator || true' EXIT
+fi
 reader="$(token vaccine-smoke "${SMOKE_CLIENT_SECRET:-}")"
 writer="$(token vaccine-simulator "${SIMULATOR_CLIENT_SECRET:-}")"
 
