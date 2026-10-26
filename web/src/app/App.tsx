@@ -22,7 +22,9 @@ export function App({ config }: { config: AppConfig }) {
     client_id: config.oidc.clientId,
     redirect_uri: `${window.location.origin}/`,
     post_logout_redirect_uri: window.location.origin,
-    scope: 'openid profile',
+    // The realm import has no built-in `profile` scope (Keycloak rejects it as invalid_scope);
+    // the claims the SPA reads come from the default `vaccine-api` scope.
+    scope: 'openid',
     automaticSilentRenew: true,
     // Drops code/state from the URL and restores the deep link saved before login.
     onSigninCallback: restoreReturnPath,

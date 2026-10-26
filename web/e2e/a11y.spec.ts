@@ -10,7 +10,9 @@ for (const path of ['/painel', '/cobertura', '/alertas', '/campanhas', '/dados/e
   test(`axe: ${path} has no serious or critical violations`, async ({ page }) => {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await page.waitForLoadState('networkidle')
+    // The SSE stream keeps the network busy, so wait for the loading panels instead.
+    await expect(page.locator('.state-loading')).toHaveCount(0)
+    await page.waitForTimeout(1500)
     const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
     const blocking = violations
       .filter((v) => v.impact === 'serious' || v.impact === 'critical')
