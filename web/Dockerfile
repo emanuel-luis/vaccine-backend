@@ -1,5 +1,5 @@
 # Build context is the repository root: docker build -f web/Dockerfile .
-FROM node:24.22.1-alpine AS build
+FROM node:26.12.1-alpine AS build
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY data/sources/geo/ /app/data/sources/geo/
 COPY web/ ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.30.6-alpine
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine
 COPY web/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/web/dist /usr/share/nginx/html
 # Dev defaults; compose overrides them. Only these prefixes go through envsubst.
