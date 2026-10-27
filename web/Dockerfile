@@ -8,7 +8,7 @@ COPY data/sources/geo/ /app/data/sources/geo/
 COPY web/ ./
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.30.6-alpine
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine
 COPY web/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/web/dist /usr/share/nginx/html
 # Dev defaults; compose overrides them. Only these prefixes go through envsubst.
