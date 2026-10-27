@@ -18,6 +18,11 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    ignore:
+      # openapi-typescript 7 requires TypeScript 5 and typescript-eslint 8 stops at 6.0
+      # (DECISIONS 41 and 62): only minor and patch updates of TypeScript.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       web:
         patterns: ["*"]
@@ -43,6 +48,11 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    ignore:
+      # The Node major of the build stage moves by hand, to an LTS line only and together with
+      # web/.nvmrc, which CI reads (DECISIONS 61): only minor and patch updates of the node image.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
     groups:
       web-images:
         patterns: ["*"]
