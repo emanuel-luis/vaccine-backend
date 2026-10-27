@@ -1,0 +1,55 @@
+# A gestor creates a campaign target, then edits it with optimistic locking. Grounded in
+# campaigns/{CampaignController,CampaignRepository,CampaignRules}.java, security/SecurityConfig.java,
+# src/main/resources/db/migration/V8__campaigns.sql, web/src/pages/CampanhaForm.tsx,
+# web/src/pages/CampanhaDetalhe.tsx, web/src/lib/campaign.ts, web/src/api/queries.ts and
+# docs/DECISIONS.md 54.
+...@_style
+
+flow: "Gestor: create a campaign target, then edit it (ETag and If-Match)" {
+  shape: sequence_diagram
+  style: {font-size: 24; bold: true}
+
+  user: "gestor.bahia" {class: actor}
+  spa: "React SPA" {class: serving}
+  api: "API\nCampaignController" {class: process}
+  pg: "Postgres\napp.campaign, marts" {class: store}
+
+  user -> spa: "Nova campanha: vaccine,\ndose, region, dates, target"
+  spa -> api: "POST /api/v1/campaigns\n(gestor role)"
+  api -> api: "rules: name, dates, target;\nregion inside the token scope"
+  api -> pg: "vaccine and dose in\nmarts.dim_vaccine"
+
+  invalid: "When the check fails" {
+    api -> spa: "422 invalid_name, ends_before_starts,\nunknown_vaccine_dose;\n403 region_out_of_scope" {class: meta}
+    spa -> user: "message next to the field"
+  }
+
+  api -> pg: "INSERT app.campaign\nversion 1, created_by"
+  api -> spa: "201, Location,\nETag \"1\"" {class: meta}
+  spa -> api: "GET /api/v1/campaigns/{id}"
+  api -> pg: "campaign + progress from\nthe merged daily doses"
+  api -> spa: "200, ETag \"1\"\n(outside the scope: 404)" {class: meta}
+  spa -> user: "target, doses to date,\ndaily chart"
+
+  edit: "Edit: the form keeps the version it opened with" {
+    user -> spa: "Editar: new target"
+    spa -> api: "PUT /api/v1/campaigns/{id}\nIf-Match: \"1\""
+    api -> pg: "UPDATE ... WHERE campaign_id\nAND version = 1 RETURNING"
+    api -> spa: "200, ETag \"2\"" {class: meta}
+  }
+
+  stale: "Someone else saved first" {
+    spa -> api: "PUT, If-Match: \"1\""
+    api -> pg: "UPDATE matches no row"
+    api -> spa: "412 version_mismatch" {class: meta}
+    spa -> user: "alterada por outra pessoa:\nRecarregar refetches the form"
+  }
+
+  api.rules: "No If-Match: 428 if_match_required.\nDELETE follows the same rules: 204."
+}
+
+legend: "solid arrow: request or SQL · dashed: response" {
+  shape: text
+  near: bottom-center
+  style.font-size: 14
+}

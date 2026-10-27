@@ -1,0 +1,65 @@
+# The live path and its hand-over to the batch layer: ingest, the live aggregate, the generation
+# watermark W, the serving merge and the two reconciliation checks. Grounded in
+# src/main/java/.../ingest/{DoseController,DoseIngestRepository,DoseRejectAdvice}.java,
+# live/{LiveListener,LiveEventHub,StreamController}.java, dashboard/MergedDosesRepository.java,
+# src/main/resources/db/migration/V6__live_ingest.sql and V7, dbt/macros/live_generation.sql,
+# dbt/tests/marts_reconcile_with_raw.sql and elt/src/vaccine_elt/reconcile.py.
+...@_style
+
+title: "Data flow, live: doses in seconds, absorbed by the next dbt build" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+direction: down
+
+sim: "dose simulator\nvaccine-elt simulate" {class: process}
+ingest: "API ingest\nPOST /api/v1/doses" {class: process}
+ingest_check: "checks on ingest: Idempotency-Key,\nvaccine, unit, age, series order;\n4xx rows in ops.ingest_reject" {class: check}
+
+tx: "one transaction per dose" {
+  class: group
+  landing: "raw.live_dose\nstamped with the\nopen generation G" {class: store}
+  agg: "live.dose_daily\ndoses + 1 per day, unit,\nvaccine, dose, age band" {class: store}
+}
+
+dbt: "dbt build\non-run-start closes G as W\n(ops.live_generation_close)" {class: process}
+batch: "fact_vaccination,\nmart_doses_daily\nbatch_generation = W" {class: store}
+dbt_test: "test on marts:\nmarts_reconcile_with_raw\n(raw rows up to W)" {class: check}
+
+merge: "serving merge, one statement:\nmart + live.dose_daily rows\nwith generation > W" {class: serving}
+hub: "LISTEN hub, 2 s ticks\ndoses filtered by scope,\nbatch to all, jobs to data-admin" {class: serving}
+web: "React SPA\nrefetches on events:\nDoses hoje moves" {class: serving}
+
+reconcile: "vaccine-elt reconcile, REPEATABLE READ\nlive aggregate vs raw.live_dose,\nserving merge vs all landing\n(batch events + live doses)" {class: check}
+recon: "ops.reconciliation_check,\nreconciliation_diff" {class: store}
+
+sim -> ingest: "Idempotency-Key\nper dose"
+sim -> ingest_check {class: layer}
+ingest -> tx.landing
+ingest -> tx.agg
+tx.landing -> dbt: "rows with\ngeneration <= W"
+dbt -> batch
+dbt -> dbt_test {class: layer}
+batch -> merge
+tx.agg -> merge: "generation > W"
+merge -> web: "REST"
+hub -> web: "SSE"
+tx.agg -> hub: "NOTIFY dose_event" {class: meta}
+dbt -> hub: "on-run-end, no node\nerrored: NOTIFY batch_event" {class: meta}
+
+tx.landing -> reconcile {class: meta}
+tx.agg -> reconcile {class: meta}
+batch -> reconcile {class: meta}
+reconcile -> recon {class: meta}
+
+legend: Legend {
+  class: legend
+  grid-columns: 5
+  process: process {class: [process; legend-item]}
+  store: table {class: [store; legend-store]}
+  serving: serving {class: [serving; legend-item]}
+  check: check {class: [check; legend-item]}
+  edges: "solid arrow: data\ndashed: notification\nor a check reading" {shape: text; style.font-size: 13}
+}

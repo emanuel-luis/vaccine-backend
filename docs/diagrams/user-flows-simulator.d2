@@ -1,0 +1,47 @@
+# The dose simulator registers doses idempotently. Grounded in elt/src/vaccine_elt/simulator.py
+# (TokenCache, _post, backoff, heartbeat), compose.yaml (vaccine-simulator, healthcheck),
+# keycloak/realm-vaccine.json (dose-ingest role), security/SecurityConfig.java,
+# ingest/{DoseController,DoseValidator,DoseIngestRepository,DoseRejectAdvice}.java,
+# web/ApiExceptionHandler.java and docs/DECISIONS.md 30, 57.
+...@_style
+
+flow: "Simulator: register a dose once, whatever the retries" {
+  shape: sequence_diagram
+  style: {font-size: 24; bold: true}
+
+  sim: "dose simulator\nvaccine-elt simulate" {class: process}
+  kc: "Keycloak\nrealm vaccine" {class: process}
+  api: "API\nDoseController" {class: process}
+  pg: "Postgres\nraw, live, marts, ops" {class: store}
+
+  sim -> kc: "token request: client_credentials,\nclient vaccine-simulator"
+  kc -> sim: "access token with role dose-ingest\n(renewed 30 s before it expires)" {class: meta}
+  sim -> api: "POST /api/v1/doses, Bearer,\nIdempotency-Key: k1 (new per dose)"
+  api -> pg: "find (azp, k1) in\nraw.live_dose: none"
+  api -> pg: "validate: dim_vaccine, dim_health_unit,\nage window, series order"
+  api -> pg: "one transaction: LOCK raw.live_dose\nROW EXCLUSIVE, read open G, INSERT\nraw.live_dose, live.dose_daily + 1,\nNOTIFY dose_event"
+  api -> sim: "201 {eventId, generation,\nreceivedAt}" {class: meta}
+
+  replay: "Retry after a lost answer: same key, same body" {
+    sim -> api: "POST, Idempotency-Key: k1"
+    api -> pg: "find (azp, k1): stored,\nsame request sha256"
+    api -> sim: "200, Idempotent-Replayed: true\n(no second dose)" {class: meta}
+  }
+
+  rejected: "Rejected: a 4xx, counted and dropped by the simulator" {
+    api -> pg: "INSERT ops.ingest_reject\n(reason, status, no body)"
+    api -> sim: "422 idempotency_key_reused (same key, other body)\n409 dose_already_registered (same person and dose)\n422 unknown_vaccine_dose, age_out_of_range, ...\n400 invalid_idempotency_key, validation_failed" {class: meta}
+  }
+
+  retry: "Network error, 401, 429 or 5xx (503 while the marts are not built)" {
+    sim -> sim: "keep k1; wait 1 s, doubling\nto 30 s; a 401 drops the token"
+  }
+
+  sim.alive: "touches /tmp/simulator-alive at least\nevery 10 s; the compose healthcheck\nfails when it is older than 30 s"
+}
+
+legend: "solid arrow: request or SQL · dashed: response" {
+  shape: text
+  near: bottom-center
+  style.font-size: 14
+}

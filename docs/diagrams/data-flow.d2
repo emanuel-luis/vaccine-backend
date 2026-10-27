@@ -1,0 +1,79 @@
+# Batch layers from source to serving, with the checks at each boundary and where run metadata
+# lands. The live path (simulator, live aggregate, generations, reconciliation) is in
+# data-flow-live.d2. Grounded in data/sources/manifest.json, elt/src/vaccine_elt/{load,contracts,
+# manifest,runlog}.py and generator/, src/main/resources/db/migration/V2-V4, dbt/models/** (8
+# staging views, 2 intermediate models, 6 dimensions, 3 facts, 5 analytics marts), dbt/seeds/
+# (dim_vaccine.sql reads pni_child_schedule, int_health_unit_versions.sql reads cnes_unit_types),
+# dbt/tests/ and src/main/java/.../dashboard/MergedDosesRepository.java.
+...@_style
+
+title: "Data flow, batch: public and synthetic sources to the marts" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+direction: down
+
+src: "Sources" {
+  class: group
+  ibge: "IBGE Localidades,\nCenso 2022 (SIDRA 9514)" {class: source}
+  cnes: "CNES extracts\n2023-06 and 2026-10" {class: source}
+  gen: "seeded generator\nvaccine-elt generate\n--rows --seed" {class: process}
+}
+
+raw: "raw · landing, Flyway DDL" {
+  class: group
+  ref: "reference\nibge_municipality,\nibge_census_population,\ncnes_unit_snapshot" {class: store}
+  events: "synthetic batch\nvaccination_event,\nvaccine_lot, vaccine_receipt" {class: store}
+  live: "raw.live_dose\nlive doses, absorbed\nup to W (live flow)" {class: store}
+  load_check: "checks on landing: sha256\nvs manifest, typed contracts,\nTRUNCATE + COPY per table" {class: check}
+}
+runs: "ops run metadata\nload_run, load_run_table,\nload_reject, load_run_source" {class: store}
+
+dbt: "dbt build" {
+  class: group
+  seeds: "seeds · schema reference\npni_child_schedule (doses, age\nwindows, coverage goals),\ncnes_unit_types" {class: source}
+  staging: "staging · 8 views\nrename, cast, map codes" {class: process}
+  intermediate: "intermediate\nint_health_unit_versions (SCD2),\nint_vaccinations_enriched" {class: process}
+  dims: "6 dimensions\ndate, municipality, health unit,\nvaccine, lot, demographic" {class: store}
+  facts: "3 facts\nvaccination, vaccine receipt,\npopulation; unit version\nvalid on the dose date" {class: store}
+  marts: "5 analytics marts\ndoses daily, by state-month,\nby age band, coverage" {class: store}
+  tests: "tests on marts: enforced\ncontracts, keys, grains, SCD2,\nage windows, reconcile with raw" {class: check}
+}
+
+api: "API serving\nJdbcClient reads marts,\nregion scope, k = 5" {class: serving}
+web: "React SPA\ndashboards, map, alerts" {class: serving}
+
+src.ibge -> raw.ref: "load-reference"
+src.cnes -> raw.ref
+src.gen -> raw.events: "same seed,\nsame rows"
+src.ibge -> raw.load_check {class: layer}
+raw.load_check -> runs: "row counts,\nrejects, sha256" {class: meta}
+src.gen -> runs {class: meta}
+
+raw.ref -> dbt.staging
+raw.events -> dbt.staging
+raw.live -> dbt.staging
+dbt.staging -> dbt.intermediate
+dbt.seeds -> dbt.intermediate
+dbt.seeds -> dbt.dims
+dbt.intermediate -> dbt.dims
+dbt.intermediate -> dbt.facts
+dbt.dims -> dbt.facts
+dbt.facts -> dbt.marts
+dbt.dims -> dbt.tests {class: layer}
+
+dbt.marts -> api
+api -> web: "REST"
+
+legend: Legend {
+  class: legend
+  grid-columns: 3
+  source: public source {class: [source; legend-item]}
+  process: process or view {class: [process; legend-item]}
+  store: table {class: [store; legend-store]}
+  serving: serving {class: [serving; legend-item]}
+  check: contract or check {class: [check; legend-item]}
+  edges: "solid arrow: data\ndashed: run metadata" {shape: text; style.font-size: 13}
+}

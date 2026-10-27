@@ -1,0 +1,66 @@
+# Data-management jobs and dbt results in schema ops (Flyway V9). Grounded in
+# src/main/resources/db/migration/V9__jobs_and_dbt_results.sql: every arrow is a declared foreign
+# key (job.run_id and dbt_invocation.job_id are ON DELETE SET NULL). job.run_id references
+# ops.load_run, drawn in data-model-ops.d2; the note says so instead of a one-column stub table.
+...@_style
+
+title: "ops schema: jobs, job logs and dbt results" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+note: "The API inserts queued jobs only; the worker alone moves status to running, succeeded or failed.\nux_job_single_active (unique on (1) where status is queued or running) allows one active job: a second POST answers 409.\njob.run_id references ops.load_run (load runs diagram); job_log keeps at most 5,000 lines per job; dbt_invocation and dbt_node_result are copied from run_results.json." {
+  shape: text
+  near: bottom-center
+  style.font-size: 15
+}
+
+direction: down
+
+job: {
+  shape: sql_table
+  job_id: uuid {constraint: primary_key}
+  kind: text
+  status: text
+  requested_by: text
+  requested_at: timestamptz
+  heartbeat_at: timestamptz
+  worker_id: text
+  run_id: uuid {constraint: foreign_key}
+  dbt_invocation_id: text
+  error: text
+}
+
+job_log: {
+  shape: sql_table
+  job_id: uuid {constraint: [primary_key; foreign_key]}
+  seq: integer {constraint: primary_key}
+  logged_at: timestamptz
+  level: text
+  message: text
+}
+
+dbt_invocation: {
+  shape: sql_table
+  invocation_id: text {constraint: primary_key}
+  job_id: uuid {constraint: foreign_key}
+  command: text
+  generated_at: timestamptz
+  success: boolean
+  batch_generation: bigint
+}
+
+dbt_node_result: {
+  shape: sql_table
+  invocation_id: text {constraint: [primary_key; foreign_key]}
+  unique_id: text {constraint: primary_key}
+  resource_type: text
+  status: text
+  failures: bigint
+  execution_time_s: numeric
+}
+
+job_log.job_id -> job.job_id
+dbt_invocation.job_id -> job.job_id
+dbt_node_result.invocation_id -> dbt_invocation.invocation_id

@@ -1,0 +1,65 @@
+# A profissional signs in and the dashboard updates live. Grounded in web/src/main.tsx,
+# web/src/config.ts, web/src/app/App.tsx (react-oidc-context, redirect_uri, silent renew),
+# web/src/auth/RequireAuth.tsx, web/src/api/queries.ts (['live', ...] keys),
+# web/src/live/LiveProvider.tsx (fetch stream, 5 s invalidation, reconnect),
+# web/nginx/default.conf.template, keycloak/realm-vaccine.json (vaccine-web, PKCE S256,
+# accessTokenLifespan 300 s),
+# security/MeController.java, dashboard/MergedDosesRepository.java,
+# live/{StreamController,LiveListener,LiveEventHub}.java and dbt/macros/live_generation.sql.
+...@_style
+
+flow: "Profissional: sign in, then a dashboard that updates live" {
+  shape: sequence_diagram
+  style: {font-size: 24; bold: true}
+
+  user: "profissional.bahia" {class: actor}
+  spa: "React SPA\n(browser)" {class: serving}
+  nginx: "web · nginx" {class: serving}
+  kc: "Keycloak\nrealm vaccine" {class: process}
+  api: "API\n(behind nginx /api)" {class: process}
+  pg: "Postgres\nmarts, live" {class: store}
+
+  user -> spa: "opens the app"
+  spa -> nginx: "GET /config.json"
+  nginx -> spa: "OIDC authority,\nclient vaccine-web" {class: meta}
+  spa -> kc: "authorization code flow,\nPKCE S256, scope openid"
+  user -> kc: "signs in on the\nKeycloak page"
+  kc -> spa: "redirect to / with\ncode and state" {class: meta}
+  spa -> kc: "code + code_verifier"
+  kc -> spa: "access token: roles,\nregion_scope UF:BA" {class: meta}
+  spa -> api: "GET /api/v1/me\n(Bearer)"
+  api -> spa: "username, roles,\nscope label" {class: meta}
+  spa -> api: "GET /dashboard/summary,\ntimeseries, by-vaccine, map"
+  api -> pg: "mart_doses_daily + live.dose_daily\nabove batch_generation, scoped"
+  api -> spa: "rows; municipality counts\n1 to 4 suppressed" {class: meta}
+  spa -> api: "fetch GET /api/v1/stream\nBearer, text/event-stream"
+  api -> spa: "event ready\n(batchGeneration)" {class: meta}
+
+  live: "While the tab is visible: a dose arrives (simulator flow)" {
+    pg -> api: "NOTIFY dose_event\n(LISTEN, polled every 500 ms)" {class: meta}
+    api -> spa: "every 2 s: event doses,\nonly regions in the scope" {class: meta}
+    spa -> api: "invalidate ['live'] at most\nevery 5 s: refetch summary"
+    api -> spa: "Doses hoje moves" {class: meta}
+  }
+
+  batch: "After a dbt build in which no node errored" {
+    pg -> api: "NOTIFY batch_event\n(dbt on-run-end)" {class: meta}
+    api -> spa: "event batch" {class: meta}
+    spa -> api: "refetch ['live'] and ['alerts']"
+  }
+
+  renew: "Token renewal (access tokens last 5 minutes)" {
+    spa -> kc: "silent renew\nbefore exp"
+    kc -> spa: "new access token" {class: meta}
+    spa -> api: "abort the stream and reopen\nit with the new token"
+    api -> spa: "event ready" {class: meta}
+  }
+
+  api.fallback: "Without a new token the API closes\nthe stream at exp (at most 30 min)."
+}
+
+legend: "solid arrow: request · dashed: response, redirect or event" {
+  shape: text
+  near: bottom-center
+  style.font-size: 14
+}
