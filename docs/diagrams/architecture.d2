@@ -1,0 +1,62 @@
+# The system in context: who uses it, the compose services and the files they are built from.
+# Grounded in compose.yaml (services, ports, OIDC_ISSUER_URI vs OIDC_JWK_SET_URI, API_UPSTREAM),
+# web/nginx/default.conf.template, web/Dockerfile + web/scripts/copy-geo.mjs, elt/Dockerfile
+# (data/sources and dbt/ inside the simulator and worker image), keycloak/realm-vaccine.json and
+# the Makefile. Layer detail is in data-flow.d2, request detail in the user-flows-*.d2 diagrams.
+# Every edge points down the stack (the JWKS edge runs from Keycloak to the API, LISTEN rides on
+# the API -> Postgres edge), so ELK stacks the layers instead of looping back. data/sources also
+# reaches the worker image and the nginx /geo files: written in those labels, since edges from the
+# repository column into the stack pushed the browser column down by about 900 px.
+...@_style
+
+title: "Architecture: a dbt warehouse with a live layer behind a role-scoped web app" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+direction: down
+
+staff: "SUS staff in a browser\nprofissional, gestor, data-admin" {class: actor; width: 72; height: 72}
+public: "IBGE and CNES\npublic endpoints" {class: external}
+
+spa: "React SPA in the browser\nreact-oidc-context, TanStack Query,\nECharts, MapLibre" {class: serving}
+snapshots: "data/sources in the repo\nvendored snapshots and geometries,\nmanifest.json with sha256" {class: source}
+host: "make demo on the host\nvaccine-elt load-reference, generate,\nreconcile; dbt build" {class: process}
+
+stack: "docker compose · project vaccine-warehouse" {
+  class: group
+  web: "web · nginx :8081\nSPA, /config.json, /geo (IBGE\ngeometries copied at build),\nproxy for /api and the SSE stream" {class: serving}
+  simulator: "simulator\nvaccine-elt simulate\nabout 2 doses per second" {class: process}
+  keycloak: "Keycloak 26.8.1 :8180\nrealm vaccine: OIDC code flow + PKCE\nfor client vaccine-web, roles,\nregion_scope claim" {class: process}
+  api: "Spring Boot API :8080\nREST, SSE hub, region scope,\nsmall-cell suppression (k = 5)" {class: process}
+  worker: "worker\nvaccine-elt worker: load-reference,\ndbt build, reconcile jobs;\nimage holds data/sources and dbt/" {class: process}
+  pg: "PostgreSQL 17\nFlyway: raw, ops, live, app\ndbt: staging, intermediate,\nmarts, reference" {class: store}
+}
+
+staff -> spa
+public -> snapshots: "vaccine-elt fetch\n(by hand)"
+snapshots -> host: "sha256 checked"
+
+# No labels on the two edges that enter the compose container: ELK puts them on its border.
+spa -> stack.web
+spa -> stack.keycloak {class: meta}
+stack.simulator -> stack.keycloak: "client credentials" {class: meta}
+stack.keycloak -> stack.api: "JWKS on the\ncompose network" {class: meta}
+stack.web -> stack.api: "proxy_pass\n(bearer token)"
+stack.simulator -> stack.api: "POST /api/v1/doses\nIdempotency-Key"
+stack.api -> stack.pg: "SQL reads and writes;\nLISTEN dose_event,\nbatch_event, job_event"
+stack.worker -> stack.pg: "LISTEN job_queued,\nclaims with SKIP LOCKED"
+host -> stack.pg: "libpq, port 5432"
+
+legend: Legend {
+  class: legend
+  grid-columns: 4
+  actor: person {class: [actor; legend-actor]}
+  external: external system {class: [external; legend-item]}
+  source: source files {class: [source; legend-item]}
+  process: service or job {class: [process; legend-item]}
+  store: database {class: [store; legend-store]}
+  serving: serving {class: [serving; legend-item]}
+  edges: "solid arrow: data or a call\ndashed: identity" {shape: text; style.font-size: 13}
+}

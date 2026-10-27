@@ -1,0 +1,58 @@
+# A data-admin runs a dbt build from the Data screens and watches its log live. Grounded in
+# admin/{AdminController,AdminRepository}.java, live/{LiveEventHub,StreamController}.java,
+# elt/src/vaccine_elt/worker.py (LISTEN, claim, heartbeat, handlers), dbt_results.py,
+# reconcile.py, src/main/resources/db/migration/V9__jobs_and_dbt_results.sql,
+# web/src/pages/DadosExecucoes.tsx, web/src/live/LiveProvider.tsx, web/src/live/useJobLog.ts
+# and docs/DECISIONS.md 58-60.
+...@_style
+
+flow: "Data-admin: run a dbt build and watch its log" {
+  shape: sequence_diagram
+  style: {font-size: 24; bold: true}
+
+  user: "admin.dados" {class: actor}
+  spa: "React SPA\n(SSE stream open)" {class: serving}
+  api: "API\nAdminController, hub" {class: process}
+  pg: "Postgres\nops.job, ops.job_log" {class: store}
+  worker: "worker\nvaccine-elt worker" {class: process}
+  dbt: "dbt build\n(subprocess)" {class: process}
+
+  user -> spa: "Dados > Execuções:\nrun dbt build"
+  spa -> api: "POST /api/v1/admin/jobs\n{kind: dbt-build}"
+  api -> pg: "INSERT ops.job queued,\nNOTIFY job_queued;\none transaction"
+  api -> spa: "202, Location\n/api/v1/admin/jobs/{id}" {class: meta}
+
+  busy: "A job is already queued or running" {
+    api -> spa: "409 job_already_active\n(ux_job_single_active)" {class: meta}
+  }
+
+  pg -> worker: "NOTIFY job_queued\n(LISTEN, 5 s poll fallback)" {class: meta}
+  worker -> pg: "claim: status running,\nFOR UPDATE SKIP LOCKED"
+  worker -> pg: "NOTIFY job_event\n(running)"
+  worker -> dbt: "dbt build"
+  dbt -> pg: "on-run-start closes\nthe generation;\nmodels and tests"
+
+  lines: "For each line dbt prints" {
+    dbt -> worker: "stdout line" {class: meta}
+    worker -> pg: "INSERT ops.job_log (seq)\nand NOTIFY job_event"
+    pg -> api: "job_event" {class: meta}
+    api -> spa: "SSE job event\n(data-admin tokens only)" {class: meta}
+    spa -> user: "line appended to the log"
+  }
+
+  dbt -> pg: "on-run-end, no node\nerrored: NOTIFY batch_event"
+  worker -> pg: "run_results.json into\ndbt_invocation,\ndbt_node_result"
+  worker -> pg: "reconcile in process:\nreconciliation_check"
+  worker -> pg: "status succeeded\nand NOTIFY job_event"
+  api -> spa: "SSE job status event" {class: meta}
+  spa -> api: "GET /admin/jobs/{id} and\n/log?afterSeq=n (resync)"
+  api -> spa: "status, rows, last lines" {class: meta}
+
+  worker.heartbeat: "heartbeat_at every 10 s; a running job\nwith none for 30 s is marked failed.\nload-reference and reconcile jobs run in\nprocess with the same log and events."
+}
+
+legend: "solid arrow: request, SQL or a command · dashed: response, notification or event" {
+  shape: text
+  near: bottom-center
+  style.font-size: 14
+}

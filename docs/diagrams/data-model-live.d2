@@ -1,0 +1,109 @@
+# Speed-layer and app tables (Flyway V6 and V8) and the mart they are merged with. Grounded in
+# src/main/resources/db/migration/V6__live_ingest.sql, V8__campaigns.sql,
+# dbt/models/marts/mart_doses_daily.sql and docs/data-model.md (generation protocol). No table here
+# has a foreign key: the dashed arrows are the generation protocol, enforced by the ingest
+# transaction, ops.close_live_generation() and the reconciliation checks.
+# Layout: a fixed 3-column grid, filled column by column in declaration order (landing and rejects,
+# aggregate and mart, generations and campaigns), so the columns hold about as many rows each.
+# ELK spread these seven tables over 1,500-2,400 px; the grid keeps them under 1,300. The
+# insert-time read of the open generation is written in the note.
+...@_style
+
+title: "Speed layer: live doses, generations and the serving merge" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+note: "Every live dose is stamped with the open generation G of ops.live_generation inside its insert transaction.\nraw.live_dose is unique on (client_id, idempotency_key) and on (person_id, vaccine_code, dose_label).\nThe API writes raw.live_dose, live.dose_daily and ops.ingest_reject when ingesting, and app.campaign for gestores.\ndbt closes generations through ops.close_live_generation() and absorbs raw.live_dose rows up to W.\nDashed arrow: protocol link, no foreign key." {
+  shape: text
+  near: bottom-center
+  style.font-size: 15
+}
+
+grid-columns: 3
+horizontal-gap: 130
+vertical-gap: 90
+
+raw_live_dose: "raw.live_dose" {
+  shape: sql_table
+  event_id: uuid {constraint: primary_key}
+  generation: bigint
+  client_id: text
+  idempotency_key: text
+  request_sha256: char(64)
+  person_id: uuid
+  cnes_code: char(7)
+  vaccine_code: text
+  dose_label: text
+  administered_at: timestamptz
+  received_at: timestamptz
+}
+
+ops_ingest_reject: "ops.ingest_reject" {
+  shape: sql_table
+  reject_id: bigint {constraint: primary_key}
+  received_at: timestamptz
+  client_id: text
+  idempotency_key: text
+  http_status: smallint
+  reason: text
+}
+
+live_dose_daily: "live.dose_daily" {
+  shape: sql_table
+  generation: bigint {constraint: primary_key}
+  administered_on: date {constraint: primary_key}
+  cnes_code: char(7) {constraint: primary_key}
+  vaccine_code: text {constraint: primary_key}
+  dose_label: text {constraint: primary_key}
+  age_band_years: smallint {constraint: primary_key}
+  municipality_code: integer
+  state_abbr: char(2)
+  doses: bigint
+}
+
+mart_doses_daily: "marts.mart_doses_daily" {
+  shape: sql_table
+  date_day: date {constraint: unique}
+  cnes_code: text {constraint: unique}
+  vaccine_code: text {constraint: unique}
+  dose_label: text {constraint: unique}
+  age_band_years: int {constraint: unique}
+  state_abbr: char(2)
+  municipality_code: int
+  doses: bigint
+  batch_generation: "bigint (W)"
+}
+
+ops_live_generation: "ops.live_generation" {
+  shape: sql_table
+  id: smallint {constraint: primary_key}
+  generation: "bigint (open G)"
+}
+
+ops_live_generation_close: "ops.live_generation_close" {
+  shape: sql_table
+  generation: "bigint (closed W)" {constraint: primary_key}
+  closed_at: timestamptz
+  closed_by: text
+}
+
+app_campaign: "app.campaign" {
+  shape: sql_table
+  campaign_id: uuid {constraint: primary_key}
+  name: text
+  vaccine_code: text
+  dose_label: text
+  region_scope: text
+  starts_on: date
+  ends_on: date
+  target_doses: integer
+  created_by: text
+  version: "integer (ETag)"
+}
+
+raw_live_dose.generation -> live_dose_daily.generation: "+1 in the\nsame\ntransaction" {class: meta}
+live_dose_daily.generation -> mart_doses_daily.batch_generation: "served\nabove W" {class: meta}
+ops_live_generation.generation -> ops_live_generation_close.generation: "on-run-start:\nG closed as W" {class: meta}
+ops_live_generation_close.generation -> mart_doses_daily.batch_generation: "rows up to W" {class: meta}
