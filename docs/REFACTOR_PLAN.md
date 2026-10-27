@@ -44,21 +44,9 @@ generates a bounded synthetic fact set; dbt marts answer coverage questions; CI 
 
 ## Dimensional model
 
-```mermaid
-erDiagram
-  dim_date ||--o{ fact_vaccination : administered_on
-  dim_vaccine ||--o{ fact_vaccination : dose
-  dim_vaccine_lot ||--o{ fact_vaccination : lot
-  dim_health_unit ||--o{ fact_vaccination : "version valid at date"
-  dim_municipality ||--o{ fact_vaccination : where
-  dim_demographic ||--o{ fact_vaccination : who
-  dim_date ||--o{ fact_vaccine_receipt : received_on
-  dim_vaccine_lot ||--o{ fact_vaccine_receipt : lot
-  dim_health_unit ||--o{ fact_vaccine_receipt : unit
-  dim_municipality ||--o{ fact_vaccine_receipt : where
-  dim_municipality ||--o{ fact_population : where
-  dim_demographic ||--o{ fact_population : who
-```
+![Star schema of the marts. fact_vaccination references dim_date, dim_vaccine, dim_vaccine_lot, dim_health_unit, dim_municipality and dim_demographic; fact_vaccine_receipt references dim_date, dim_vaccine_lot, dim_health_unit and dim_municipality; fact_population references dim_municipality and dim_demographic. Each dimension has a surrogate uuid key (dim_date an integer yyyymmdd key).](diagrams/data-model.svg)
+
+Source: [data-model.d2](diagrams/data-model.d2).
 
 Grains:
 - `fact_vaccination`: one dose given to one synthetic person at one unit on one date.

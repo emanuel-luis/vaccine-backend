@@ -31,6 +31,10 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
   `uv run --project elt dbt <cmd> --project-dir dbt --profiles-dir dbt` with libpq `PG*` env set
   (the Makefile maps them from `.env`)
 - No JDK 21 on PATH? Point `JAVA_HOME` at one; `.tools/` is gitignored for a local portable JDK.
+- Diagrams: `make diagrams` (render `docs/diagrams/*.d2` to SVG with the pinned D2 v0.9.0),
+  `make diagrams-check` (CI job `diagrams`: render, fail on a stale or orphan SVG),
+  `make diagrams-watch NAME=<name>` (live preview); `make d2-install` once (Linux x86_64, sha256
+  checked). On Windows run them in WSL, never with a Windows `d2.exe` for committed SVGs.
 
 ## Repo map
 - `src/main/java/io/github/emanuelluis/vaccine/`: `analytics/` (doses, coverage), `units/`
@@ -55,6 +59,8 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - `web/`: React 19 + TypeScript SPA (Vite), OIDC login via `react-oidc-context`, typed client
   `src/api/schema.ts` generated from the spec (never edit it by hand), nginx image with a runtime
   `/config.json`; UI text in pt-BR
+- `docs/diagrams/`: D2 sources and their committed SVGs (architecture, data flows, user flows,
+  ERDs); `_style.d2` holds the shared layout config and classes and is imported by every diagram
 - `compose.yaml`, `Dockerfile`, `Makefile`, `.github/workflows/ci.yml`
 
 ## Invariants
@@ -93,3 +99,7 @@ and `docs/WEB_PLATFORM_PLAN.md` (real-time dashboards, delivered in PRs), decisi
 - Python 3.12, ruff line length 100 (+ B, BLE, DTZ, I, UP), mypy strict on `elt/src`; pytest
   markers `db` (Docker) and `external` (network, never in CI).
 - dbt 1.12: generic test arguments under `arguments:`; marts have enforced contracts.
+- Diagrams are D2, never Mermaid: edit the `.d2`, run `make diagrams`, commit the `.d2` and `.svg`
+  together, in the same PR as the code change they draw. Keep each under about 1,300 px wide and
+  25 nodes; split instead of shrinking text. Edit `.d2` files with an editor, not `sed` or a
+  heredoc script: shell rewriting turns `\n` in labels into real newlines.

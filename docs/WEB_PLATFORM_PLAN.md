@@ -49,48 +49,15 @@ brokers, extra microservices, dose-level screens, stock tracking for live doses.
 | Processed | dbt `staging`, `intermediate`, facts | `live.dose_daily` (incremental aggregate, same transaction as landing) | dbt / API |
 | Serving | dbt `marts` | API merge: marts plus unabsorbed live generations, region scope, suppression | API |
 
-```mermaid
-flowchart LR
-  subgraph sources[Sources]
-    SNAP[Vendored snapshots + geo, sha256 manifest]
-    GEN[Seeded generator]
-    SIM[simulator: vaccine-elt simulate]
-  end
-  KC[Keycloak realm vaccine]
-  subgraph pg[Postgres]
-    RAW[(raw: reference, batch events, live_dose)]
-    LIVE[(live.dose_daily)]
-    MARTS[(marts)]
-    OPS[(ops: runs, generations, jobs, dbt results, reconciliation)]
-    APP[(app.campaign)]
-  end
-  subgraph api[Spring Boot API]
-    ING[POST /api/v1/doses]
-    SRV[serving: merge + scope + suppression]
-    HUB[LISTEN hub to SSE /api/v1/stream]
-    JOBS[admin jobs]
-  end
-  WRK[worker: vaccine-elt worker]
-  DBT[dbt build]
-  WEB[web: nginx + React SPA]
-  SNAP -->|load-reference| RAW
-  GEN -->|generate| RAW
-  SIM -->|bearer, client credentials| ING
-  ING -->|one transaction + NOTIFY| RAW
-  ING --> LIVE
-  RAW -->|generation <= W| DBT --> MARTS
-  MARTS --> SRV
-  LIVE -->|generation > W| SRV
-  APP --> SRV
-  LIVE -. NOTIFY dose_event .-> HUB
-  JOBS --> OPS -->|SKIP LOCKED| WRK --> DBT
-  WRK -. NOTIFY job_event .-> HUB
-  DBT -. NOTIFY batch_event .-> HUB
-  WEB -->|same-origin /api| SRV
-  WEB --> HUB
-  WEB -->|OIDC + PKCE| KC
-  KC -. JWKS .-> api
-```
+![Architecture. SUS staff use a React SPA served by nginx, which signs in with Keycloak (OIDC code flow with PKCE) and reaches the Spring Boot API through the nginx proxy, SSE stream included. The simulator posts doses with a client-credentials token. The API, the job worker and make demo on the host share one PostgreSQL 17 database. Keycloak's JWKS reaches the API on the compose network.](diagrams/architecture.svg)
+
+Source: [architecture.d2](diagrams/architecture.d2).
+
+The speed path and its hand-over to the batch layer:
+
+![Live data flow. Each posted dose is checked, then written to raw.live_dose and live.dose_daily in one transaction with NOTIFY dose_event. A dbt build closes the open generation as W and absorbs the live rows up to W; the serving merge adds live rows above W in one statement; the LISTEN hub relays dose, batch and job events over SSE; vaccine-elt reconcile checks the live aggregate and the serving merge against the landing tables.](diagrams/data-flow-live.svg)
+
+Source: [data-flow-live.d2](diagrams/data-flow-live.d2).
 
 ## 3. Data contracts
 
@@ -260,6 +227,12 @@ Repositories never take raw region parameters. Every query method requires a
 so a query without scope does not compile. Ranges: at most 1,096 days. Missing marts still answer
 503 (problem details, `Retry-After: 30`).
 
+Campaign writes use the row version as the ETag (decision 54):
+
+![Campaign flow. A gestor posts a campaign; the API checks the rules and the token scope in process and the vaccine and dose in marts.dim_vaccine (422 or 403 on failure), inserts app.campaign with version 1 and answers 201 with Location and ETag "1". An edit sends PUT with If-Match "1" and gets 200 with ETag "2". A stale If-Match updates no row and gets 412 version_mismatch, and the form offers Recarregar. Without If-Match the answer is 428; DELETE follows the same rules.](diagrams/user-flows-campaign.svg)
+
+Source: [user-flows-campaign.d2](diagrams/user-flows-campaign.d2).
+
 ### POST /doses semantics
 
 | Case | Result |
@@ -303,6 +276,10 @@ Validation reads run before the write transaction. Every 4xx writes one `ops.ing
 - nginx (`location /api/v1/stream`): `proxy_http_version 1.1; proxy_set_header Connection "";
   proxy_buffering off; proxy_cache off; gzip off; proxy_read_timeout 1h;`. The API also sends
   `X-Accel-Buffering: no` and `Cache-Control: no-cache`.
+
+![Live dashboard flow. The SPA loads /config.json from nginx, signs in with Keycloak through the authorization code flow with PKCE S256 and gets a token with roles and region_scope. It calls /api/v1/me and the dashboard endpoints, which merge mart_doses_daily with live.dose_daily above batch_generation, then opens /api/v1/stream with fetch and a bearer token. Each NOTIFY dose_event becomes a doses event every 2 s, filtered by scope, and the SPA refetches at most every 5 s. A batch_event after a dbt build without errors triggers a refetch. Access tokens last 5 minutes: the SPA renews silently before they expire and reopens the stream with the new token; the API closes a stream whose token expired, after at most 30 minutes.](diagrams/user-flows-live-dashboard.svg)
+
+Source: [user-flows-live-dashboard.d2](diagrams/user-flows-live-dashboard.d2).
 
 ## 6. Security
 
@@ -381,6 +358,10 @@ spring.security.oauth2.resourceserver.jwt:
 - **license_status:** new optional manifest field (`to_be_confirmed` default | `confirmed`).
   Existing entries need no edit.
 
+![Data job flow. A data-admin queues a dbt build; the API inserts a queued ops.job row and sends NOTIFY job_queued in one transaction and answers 202 (409 when a job is already active). The worker wakes on job_queued, claims the job with FOR UPDATE SKIP LOCKED and runs dbt build as a subprocess. Each output line goes to ops.job_log with NOTIFY job_event, and the API relays it as an SSE job event to data-admin tokens only. The worker then records the dbt results, runs the reconciliation and marks the job succeeded; the SPA resyncs the log with afterSeq.](diagrams/user-flows-data-job.svg)
+
+Source: [user-flows-data-job.d2](diagrams/user-flows-data-job.d2).
+
 ## 8. Simulator
 
 - `vaccine-elt simulate --rate <per second> --invalid-ratio <0..1>`; compose env
@@ -392,6 +373,10 @@ spring.security.oauth2.resourceserver.jwt:
 - Stdlib only (`urllib.request`, token bucket on `time.monotonic`). Client-credentials token
   refreshed before `exp` and on 401. The same `Idempotency-Key` is retried on network errors and
   5xx. Backoff up to 30 s on 503, which is normal before the marts exist.
+
+![Simulator flow. The simulator gets a client-credentials token for vaccine-simulator with the dose-ingest role and posts each dose with a new Idempotency-Key. The API finds no stored row for the key, validates against the marts and, in one transaction, inserts raw.live_dose, adds one to live.dose_daily and sends NOTIFY dose_event, answering 201. A retry with the same key and body gets 200 with Idempotent-Replayed. Rejections (422 key reused, 409 dose already registered, 422 validation, 400) are written to ops.ingest_reject. Network errors, 401, 429 and 5xx are retried with the same key and a backoff from 1 to 30 s.](diagrams/user-flows-simulator.svg)
+
+Source: [user-flows-simulator.d2](diagrams/user-flows-simulator.d2).
 
 ## 9. Web app
 
