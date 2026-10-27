@@ -1,0 +1,119 @@
+# Marts star schema, built by dbt in schema marts. Grounded in dbt/models/marts/_marts__models.yml
+# and _marts_synthetic__models.yml: PK = unique + not_null tests on the surrogate key, UNQ = a unique
+# test on a natural key, every arrow is one relationships test (dbt drop-and-swap would drop real FK
+# constraints). The two dimension-to-dimension relationships tests are written in the note instead
+# of drawn: as arrows they push dim_vaccine and dim_municipality into a third ELK column and the
+# diagram past 1,600 px. Columns are a selection; docs/data-model.md has every column. The analytics
+# marts (mart_*) aggregate these tables and are listed in docs/data-model.md.
+...@_style
+
+title: "Marts star schema: three facts, six conformed dimensions" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+note: "Grain (unique tests): fact_vaccination = one dose to one synthetic person (person_id, vaccine_key);\nfact_vaccine_receipt = one lot shipment to one unit (health_unit_key, lot_key);\nfact_population = municipality x sex x age 0-6 x census year.\nAlso tested: dim_vaccine_lot.vaccine_code in dim_vaccine, dim_health_unit.municipality_code in dim_municipality.\nEvery dimension except dim_date has an Unknown row (key 00000000-...), so facts hold no null keys." {
+  shape: text
+  near: bottom-center
+  style.font-size: 15
+}
+
+direction: right
+
+fact_vaccination: {
+  shape: sql_table
+  vaccination_id: uuid {constraint: primary_key}
+  person_id: uuid
+  date_key: integer {constraint: foreign_key}
+  vaccine_key: uuid {constraint: foreign_key}
+  lot_key: uuid {constraint: foreign_key}
+  health_unit_key: uuid {constraint: foreign_key}
+  municipality_key: uuid {constraint: foreign_key}
+  demographic_key: uuid {constraint: foreign_key}
+  age_days: integer
+  doses: integer
+  record_source: text
+  batch_generation: bigint
+}
+
+fact_vaccine_receipt: {
+  shape: sql_table
+  receipt_id: uuid {constraint: primary_key}
+  date_key: integer {constraint: foreign_key}
+  lot_key: uuid {constraint: foreign_key}
+  health_unit_key: uuid {constraint: foreign_key}
+  municipality_key: uuid {constraint: foreign_key}
+  doses_received: integer
+}
+
+fact_population: {
+  shape: sql_table
+  municipality_key: uuid {constraint: foreign_key}
+  demographic_key: uuid {constraint: foreign_key}
+  census_year: integer
+  population: integer
+}
+
+dim_date: {
+  shape: sql_table
+  date_key: integer {constraint: primary_key}
+  date_day: date {constraint: unique}
+  year_month: text
+}
+
+dim_vaccine: {
+  shape: sql_table
+  vaccine_key: uuid {constraint: primary_key}
+  vaccine_code: text
+  dose_label: text
+  coverage_goal_pct: "numeric(5,2)"
+}
+
+dim_vaccine_lot: {
+  shape: sql_table
+  lot_key: uuid {constraint: primary_key}
+  lot_number: text {constraint: unique}
+  vaccine_code: text
+}
+
+dim_health_unit: {
+  shape: sql_table
+  health_unit_key: uuid {constraint: primary_key}
+  cnes_code: text
+  municipality_code: integer
+  valid_from: date
+  valid_to: date
+  is_current: boolean
+}
+
+dim_municipality: {
+  shape: sql_table
+  municipality_key: uuid {constraint: primary_key}
+  municipality_code: integer {constraint: unique}
+  municipality_name: text
+  state_abbr: text
+  region_name: text
+}
+
+dim_demographic: {
+  shape: sql_table
+  demographic_key: uuid {constraint: primary_key}
+  sex: text
+  age_band_years: integer
+}
+
+fact_vaccination.date_key -> dim_date.date_key
+fact_vaccination.vaccine_key -> dim_vaccine.vaccine_key
+fact_vaccination.lot_key -> dim_vaccine_lot.lot_key
+fact_vaccination.health_unit_key -> dim_health_unit.health_unit_key
+fact_vaccination.municipality_key -> dim_municipality.municipality_key
+fact_vaccination.demographic_key -> dim_demographic.demographic_key
+
+fact_vaccine_receipt.date_key -> dim_date.date_key
+fact_vaccine_receipt.lot_key -> dim_vaccine_lot.lot_key
+fact_vaccine_receipt.health_unit_key -> dim_health_unit.health_unit_key
+fact_vaccine_receipt.municipality_key -> dim_municipality.municipality_key
+
+fact_population.municipality_key -> dim_municipality.municipality_key
+fact_population.demographic_key -> dim_demographic.demographic_key

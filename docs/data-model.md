@@ -9,35 +9,13 @@ the speed layer is in [WEB_PLATFORM_PLAN.md](WEB_PLATFORM_PLAN.md).
 
 ## Flow
 
-```mermaid
-flowchart LR
-  subgraph sources[Public sources, vendored with a sha256 manifest]
-    IBGE[IBGE Localidades]
-    SIDRA[IBGE Censo 2022, SIDRA 9514]
-    CNES[CNES extracts 2023 and 2026]
-  end
-  GEN[Seeded synthetic generator]
-  POST[POST /api/v1/doses]
-  subgraph pg[Postgres]
-    RAW[(raw: reference, batch events, live_dose)]
-    LIVE[(live.dose_daily)]
-    OPS[(ops: runs, generations, rejects, reconciliation)]
-    STG[staging and intermediate views]
-    MARTS[(marts: dims, facts, analytics)]
-  end
-  API[Spring Boot API: serving merge]
-  REC[vaccine-elt reconcile]
-  IBGE & SIDRA & CNES -->|load-reference: verify sha256, COPY| RAW
-  GEN -->|generate --rows --seed: COPY| RAW
-  POST -->|one transaction per dose| RAW
-  POST --> LIVE
-  RAW -->|live rows with generation <= W| STG
-  STG -->|dbt build + tests| MARTS
-  MARTS --> API
-  LIVE -->|generation > batch_generation| API
-  OPS -. close_live_generation, on-run-start .-> STG
-  MARTS & LIVE & RAW -.-> REC -.-> OPS
-```
+![Batch data flow. IBGE Localidades, Censo 2022 (SIDRA 9514) and the CNES extracts are checked against the sha256 manifest and typed contracts and loaded into raw with TRUNCATE and COPY, with row counts and rejects in ops; the seeded generator writes the synthetic events. dbt adds the pni_child_schedule and cnes_unit_types seeds and builds staging views, the SCD2 and enrichment models, 6 dimensions, 3 facts and 5 analytics marts with their tests, and the API reads the marts.](diagrams/data-flow.svg)
+
+Source: [data-flow.d2](diagrams/data-flow.d2).
+
+![Live data flow. POST /api/v1/doses writes raw.live_dose and live.dose_daily in one transaction. A dbt build closes the open generation as W through its on-run-start hook and absorbs the rows up to W; serving adds live.dose_daily rows above the mart's batch_generation in one statement. vaccine-elt reconcile compares the live aggregate and the serving merge with the landing tables and writes the results to ops.](diagrams/data-flow-live.svg)
+
+Source: [data-flow-live.d2](diagrams/data-flow-live.d2).
 
 ## Conventions
 
@@ -55,6 +33,10 @@ flowchart LR
   timestamps are `timestamptz` in UTC.
 
 ## Dimensions
+
+![Star schema of the marts: fact_vaccination, fact_vaccine_receipt and fact_population with their grains, the six dimensions with their surrogate keys, and one arrow per relationships test. Columns are a selection; the tables below list all of them.](diagrams/data-model.svg)
+
+Source: [data-model.d2](diagrams/data-model.d2).
 
 | Table | Grain | Columns |
 | --- | --- | --- |
@@ -209,6 +191,10 @@ receipts are almost as many as doses.
 Doses posted to `POST /api/v1/doses` are available to the dashboards at once and are absorbed by
 the next dbt run. Migrations `V6` and `V7` own the objects.
 
+![Speed-layer tables: raw.live_dose, live.dose_daily, ops.live_generation, ops.live_generation_close, ops.ingest_reject and app.campaign, beside marts.mart_doses_daily. Dashed arrows show the generation protocol: each landing row adds one to the aggregate in the same transaction, dbt closes the open generation as W, the mart absorbs rows up to W and serving adds aggregate rows above W. None of these links is a foreign key.](diagrams/data-model-live.svg)
+
+Source: [data-model-live.d2](diagrams/data-model-live.d2).
+
 - `raw.live_dose`: one accepted dose, append-only. `event_id` uuid PK (server-generated),
   `generation`, `client_id`, `idempotency_key`, `request_sha256`, `person_id`, `birth_date`, `sex`,
   `cnes_code`, `vaccine_code`, `dose_label`, `lot_number` (nullable), `administered_at`,
@@ -274,6 +260,10 @@ reported as a lost dose.
 - `ops.reconciliation_diff`: PK (`run_id`, `check_name`, `line_no`), `diff_key` jsonb, `expected`,
   `actual`; at most 100 rows per check.
 
+![ops load runs and reconciliation results: load_run with its children load_run_table, load_reject, load_run_source and reconciliation_check, and reconciliation_diff under reconciliation_check. Every arrow is a declared foreign key.](diagrams/data-model-ops.svg)
+
+Source: [data-model-ops.d2](diagrams/data-model-ops.d2).
+
 ## Data management (jobs and dbt results)
 
 Flyway V9. The API queues jobs; the Python worker (`vaccine-elt worker`) runs them (decisions 58 to 60).
@@ -298,6 +288,10 @@ Flyway V9. The API queues jobs; the Python worker (`vaccine-elt worker`) runs th
 The job `rows` and `rejects` fields are sums of `rows_loaded` and `rows_rejected` in
 `ops.load_run_table` for the job's `run_id` (null without a run). A reconciliation diff key is returned
 as the JSON text of `diff_key`.
+
+![ops jobs and dbt results: job_log and dbt_invocation reference job, and dbt_node_result references dbt_invocation; job.run_id references ops.load_run. Every arrow is a declared foreign key.](diagrams/data-model-jobs.svg)
+
+Source: [data-model-jobs.d2](diagrams/data-model-jobs.d2).
 
 ## API mapping
 

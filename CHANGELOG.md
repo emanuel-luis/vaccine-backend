@@ -22,8 +22,12 @@ All notable changes to this project are documented here. The format follows
   recorded in `ops`, and screens for sources, runs with a live log, quality tests and reconciliation.
 - Browser end-to-end tests (Playwright, six specs plus axe checks) that sign in through Keycloak;
   `make e2e`, `make screenshots` and a CI step that runs them after `make demo`.
+- D2 diagrams in `docs/diagrams` (architecture, batch and live data flows, four user flows, four
+  ERDs) rendered to committed SVGs with a pinned D2 v0.9.0; `make diagrams`, `make diagrams-check`,
+  `make diagrams-watch`, `make d2-install` and a `diagrams` CI job that fails on a stale SVG.
 
 ### Changed
+- README and docs show the D2 diagrams instead of the five Mermaid blocks.
 - The CI end-to-end job also installs Chromium, runs the Playwright suite (timeout 40 minutes) and
   uploads its report on failure.
 - Repository renamed to `vaccine-warehouse` (GitHub redirects `vaccine-backend`). The Maven

@@ -24,10 +24,11 @@ NO_DB = PGUSER=lint PGPASSWORD=lint PGDATABASE=lint
 
 .PHONY: help install lint format test-fast test test-java test-python env up down logs \
 	load-reference generate dbt-deps dbt-build worker reconcile demo smoke speed-check openapi simulate \
-	web-install web-lint web-test web-build e2e screenshots
+	web-install web-lint web-test web-build e2e screenshots \
+	d2-install diagrams diagrams-check diagrams-watch
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 install: ## Resolve Maven deps, sync the ELT env (uv) and install dbt packages
 	$(MVN) dependency:go-offline
@@ -121,3 +122,49 @@ e2e: env ## Browser e2e (Playwright) against the running stack; run make demo fi
 
 screenshots: env ## Regenerate docs/screenshots from the running stack
 	set -a && . ./.env && set +a && cd web && npm run screenshots
+
+# Diagrams: docs/diagrams/<name>.d2 rendered to <name>.svg (committed). One pinned D2 everywhere.
+# Layout engine, themes and padding live in docs/diagrams/_style.d2 (d2-config), so d2 runs in a
+# clean environment: D2_* and SCALE variables would override that config. --scale 1 is not a
+# d2-config key; it writes the natural width and height, so GitHub never upscales a small diagram.
+# These recipes start with `set -euo pipefail` because this Makefile sets no global .SHELLFLAGS
+# (dbt-build needs to keep going after a failing dbt build to record its results).
+D2_VERSION := 0.9.0
+# sha256 of d2-v$(D2_VERSION)-linux-amd64.tar.gz, from the release's SHA256SUMS
+D2_SHA256 := 5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9
+D2_HOME ?= $(HOME)/.local/share/d2/v$(D2_VERSION)
+D2 ?= $(D2_HOME)/bin/d2
+D2_RUN = env -i PATH="$$PATH" HOME="$$HOME" "$(D2)" --scale 1
+DIAGRAMS := $(filter-out docs/diagrams/_%,$(wildcard docs/diagrams/*.d2))
+
+d2-install: ## Install the pinned D2 (Linux x86_64) into D2_HOME, checksum verified
+	@set -euo pipefail; \
+	if [ -x "$(D2_HOME)/bin/d2" ]; then echo "D2 v$(D2_VERSION) already in $(D2_HOME)"; exit 0; fi; \
+	[ "$$(uname -sm)" = "Linux x86_64" ] || { echo "d2-install covers Linux x86_64 only;" \
+		"install D2 v$(D2_VERSION) yourself and pass D2=/path/to/d2" >&2; exit 1; }; \
+	tmp="$$(mktemp -d)"; trap 'rm -rf "$$tmp"' EXIT; \
+	curl -fsSLo "$$tmp/d2.tar.gz" \
+		"https://github.com/terrastruct/d2/releases/download/v$(D2_VERSION)/d2-v$(D2_VERSION)-linux-amd64.tar.gz"; \
+	echo "$(D2_SHA256)  $$tmp/d2.tar.gz" | sha256sum --check --strict; \
+	tar -xzf "$$tmp/d2.tar.gz" -C "$$tmp"; \
+	mkdir -p "$(D2_HOME)/bin"; \
+	install -m 0755 "$$tmp/d2-v$(D2_VERSION)/bin/d2" "$(D2_HOME)/bin/d2"; \
+	"$(D2_HOME)/bin/d2" --version
+
+diagrams: ## Render docs/diagrams/*.d2 to SVG with the pinned D2 (run make d2-install once)
+	@set -euo pipefail; v="$$($(D2_RUN) --version 2>/dev/null || true)"; [ "$$v" = "v$(D2_VERSION)" ] || { \
+		echo "need D2 v$(D2_VERSION) at $(D2), found '$${v:-nothing}': run make d2-install" >&2; exit 1; }
+	@set -euo pipefail; for f in $(DIAGRAMS); do $(D2_RUN) "$$f" "$${f%.d2}.svg"; done
+
+diagrams-check: diagrams ## Render, then fail if a committed SVG is stale, missing or has no source
+	@set -euo pipefail; shopt -s nullglob; for s in docs/diagrams/*.svg; do \
+		[ -f "$${s%.svg}.d2" ] || { echo "$$s has no .d2 source" >&2; exit 1; }; done
+	@set -euo pipefail; changed="$$(git status --porcelain --untracked-files=all -- 'docs/diagrams/*.svg')"; \
+	if [ -n "$$changed" ]; then echo "$$changed" >&2; \
+		echo "rendered SVGs differ from the committed ones: run make diagrams and commit" >&2; exit 1; fi
+
+diagrams-watch: ## Live preview in the browser while editing: make diagrams-watch NAME=architecture
+	@# NAME only from the command line: WSL exports NAME (the hostname) into every shell.
+	@[ "$(origin NAME)" = "command line" ] && [ -f "docs/diagrams/$(NAME).d2" ] || { \
+		echo "usage: make diagrams-watch NAME=<one of: $(basename $(notdir $(DIAGRAMS)))>" >&2; exit 1; }
+	$(D2_RUN) --watch --browser "$${BROWSER:-0}" docs/diagrams/$(NAME).d2 docs/diagrams/$(NAME).svg

@@ -1,0 +1,88 @@
+# Run metadata and reconciliation results in schema ops (Flyway V2, V7, V9). Grounded in
+# src/main/resources/db/migration/V2__ops_run_metadata.sql, V7__reconciliation.sql and
+# V9__jobs_and_dbt_results.sql (ops.load_run_source): every arrow is a declared foreign key. Jobs
+# and dbt results are in data-model-jobs.d2. Columns are a selection; docs/data-model.md has every
+# column.
+...@_style
+
+title: "ops schema: load runs and reconciliation results" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+note: "Every load-reference, generate and reconcile run is one ops.load_run row (UTC timestamps, status, error).\nload_run_table holds the row counts per raw table: rows_read = rows_loaded + rows_rejected; rejected lines go to load_reject.\nload_run_source is one row per manifest entry verified by sha256; reconcile writes one check row per check and at most 100 diffs." {
+  shape: text
+  near: bottom-center
+  style.font-size: 15
+}
+
+direction: right
+
+load_run: {
+  shape: sql_table
+  run_id: uuid {constraint: primary_key}
+  command: text
+  status: text
+  seed: bigint
+  sample_fraction: numeric
+  started_at: timestamptz
+  finished_at: timestamptz
+}
+
+load_run_table: {
+  shape: sql_table
+  run_id: uuid {constraint: [primary_key; foreign_key]}
+  table_name: text {constraint: primary_key}
+  source: text {constraint: primary_key}
+  source_sha256: char(64)
+  rows_read: bigint
+  rows_loaded: bigint
+  rows_rejected: bigint
+}
+
+load_reject: {
+  shape: sql_table
+  run_id: uuid {constraint: [primary_key; foreign_key]}
+  table_name: text {constraint: primary_key}
+  source: text {constraint: primary_key}
+  line_no: bigint {constraint: primary_key}
+  reason: text
+}
+
+load_run_source: {
+  shape: sql_table
+  run_id: uuid {constraint: [primary_key; foreign_key]}
+  source_id: text {constraint: primary_key}
+  source_url: text
+  license_status: text
+  sha256: char(64)
+  verified: boolean
+}
+
+reconciliation_check: {
+  shape: sql_table
+  run_id: uuid {constraint: [primary_key; foreign_key]}
+  check_name: text {constraint: primary_key}
+  batch_generation: bigint
+  open_generation: bigint
+  keys_mismatched: bigint
+  passed: boolean
+}
+
+reconciliation_diff: {
+  shape: sql_table
+  run_id: uuid {constraint: [primary_key; foreign_key]}
+  check_name: text {constraint: [primary_key; foreign_key]}
+  line_no: integer {constraint: primary_key}
+  diff_key: jsonb
+  expected: bigint
+  actual: bigint
+}
+
+load_run_table.run_id -> load_run.run_id
+load_reject.run_id -> load_run.run_id
+load_run_source.run_id -> load_run.run_id
+reconciliation_check.run_id -> load_run.run_id
+reconciliation_diff.run_id -> reconciliation_check.run_id
+reconciliation_diff.check_name -> reconciliation_check.check_name

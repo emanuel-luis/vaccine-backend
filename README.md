@@ -26,37 +26,15 @@ Also in the web platform:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  PUB[IBGE and CNES snapshots] -->|load-reference| RAW
-  GEN[Seeded generator] -->|generate| RAW
-  subgraph batch[Batch layer in Postgres 17]
-    RAW[(raw)] -->|dbt build| MARTS[(marts)]
-  end
-  SIM[Dose simulator] -->|POST doses| API[Spring Boot API]
-  subgraph speed[Speed layer]
-    LIVE[(raw.live_dose)]
-    AGG[(live.dose_daily)]
-  end
-  API --> LIVE
-  API --> AGG
-  LIVE -.absorbed by the next dbt build.-> MARTS
-  MARTS --> API
-  AGG --> API
-  API -->|REST and SSE| WEB[React web app]
-```
+![Architecture. SUS staff use a React SPA served by nginx. The SPA signs in with Keycloak (OIDC code flow with PKCE) and calls the Spring Boot API through nginx, including a server-sent events stream. A dose simulator gets a client-credentials token and posts doses to the API. The API, a job worker and make demo on the host all use one PostgreSQL 17 database: raw, ops, live and app from Flyway, staging, intermediate and marts from dbt. Public IBGE and CNES files are vendored in the repo with a sha256 manifest.](docs/diagrams/architecture.svg)
 
-Access and data management run beside this flow:
+Source: [architecture.d2](docs/diagrams/architecture.d2).
 
-```mermaid
-flowchart LR
-  KC[Keycloak] -->|token with region_scope| WEB[React web app]
-  WEB -->|bearer token| API[API]
-  KC -.validates.-> API
-  WEB -->|queue a job| API
-  API --> JOBS[(ops.job)]
-  WORKER[Job worker] -->|claims with SKIP LOCKED| JOBS
-```
+The batch path, from the vendored public files and the seeded generator to the marts the API reads:
+
+![Batch data flow. IBGE and CNES files are checked against the sha256 manifest and typed contracts and loaded into raw with TRUNCATE and COPY, with row counts and rejects in ops. The seeded generator writes the synthetic events. dbt adds two seeds (the vaccine schedule with its coverage goals, and the CNES unit types) and builds 8 staging views, 2 intermediate models (SCD2 unit versions and enriched vaccinations), 6 dimensions, 3 facts and 5 analytics marts, tested on contracts, keys, grains, SCD2 and age windows. The API serves the marts to the SPA.](docs/diagrams/data-flow.svg)
+
+Source: [data-flow.d2](docs/diagrams/data-flow.d2).
 
 ## Tech stack
 
@@ -120,6 +98,28 @@ The same dashboard in the dark theme:
 
 The simulator posts synthetic doses to the API. Each dose is written in one transaction to `raw.live_dose` and to the `live.dose_daily` aggregate, and a Postgres `NOTIFY` wakes the API, which pushes events over server-sent events to every open browser. The pages refetch, so "Doses hoje" moves within seconds. When dbt builds, the `on-run-start` hook closes the current generation: the mart carries that generation as `batch_generation` and the API only adds live rows with a higher one, so the totals stay exact across the hand-over. `make speed-check` checks this end to end.
 
+![Live data flow. The simulator posts each dose with an Idempotency-Key. The API checks it, then writes raw.live_dose and live.dose_daily in one transaction and sends NOTIFY dose_event. A dbt build closes the open generation as W, absorbs the live rows up to W into fact_vaccination and mart_doses_daily, and sends NOTIFY batch_event. The serving merge adds live rows above W to the mart in one statement. The LISTEN hub pushes events to the SPA over SSE. vaccine-elt reconcile compares the live aggregate and the serving merge with the landing tables.](docs/diagrams/data-flow-live.svg)
+
+Source: [data-flow-live.d2](docs/diagrams/data-flow-live.d2).
+
+## Diagrams
+
+Every diagram is a [D2](https://d2lang.com) source in [docs/diagrams](docs/diagrams), rendered to the SVG next to it and checked in CI.
+
+| Diagram | What it shows |
+| --- | --- |
+| [Architecture](docs/diagrams/architecture.svg) | People, compose services, Keycloak, the database and the files they are built from |
+| [Data flow, batch](docs/diagrams/data-flow.svg) | Sources to raw, staging, intermediate, dimensions, facts and marts, with the checks and run metadata |
+| [Data flow, live](docs/diagrams/data-flow-live.svg) | Ingest, the live aggregate, the generation watermark, the serving merge and reconciliation |
+| [Live dashboard](docs/diagrams/user-flows-live-dashboard.svg) | A profissional signs in (OIDC with PKCE) and the dashboard updates over SSE |
+| [Campaign](docs/diagrams/user-flows-campaign.svg) | A gestor creates a campaign target and edits it with ETag and If-Match |
+| [Data job](docs/diagrams/user-flows-data-job.svg) | A data-admin runs a dbt build through the worker and watches its log live |
+| [Simulator](docs/diagrams/user-flows-simulator.svg) | The dose simulator registers doses idempotently, with retries and rejects |
+| [Star schema](docs/diagrams/data-model.svg) | The marts: three facts with their grain, six dimensions and their keys |
+| [Speed layer tables](docs/diagrams/data-model-live.svg) | raw.live_dose, live.dose_daily, the generation tables, ingest rejects and campaigns |
+| [Load runs](docs/diagrams/data-model-ops.svg) | ops run metadata and reconciliation results |
+| [Jobs](docs/diagrams/data-model-jobs.svg) | ops jobs, job logs and dbt results |
+
 ## Data and licensing
 
 Reference data is public (IBGE Localidades, Censo 2022 via SIDRA, CNES extracts, attributed to IBGE and the Ministry of Health). Vaccination events, lots and receipts are synthetic, so no number here is real coverage.
@@ -153,9 +153,14 @@ make web-lint web-test web-build
 make e2e           # Playwright against the running stack (make demo first)
 make screenshots   # regenerate docs/screenshots from the running stack
 make simulate      # run the dose simulator from the host
+make diagrams      # render docs/diagrams/*.d2 to SVG with the pinned D2
+make diagrams-check                   # what CI runs: render, then fail on a stale SVG
+make diagrams-watch NAME=architecture # live preview in the browser while editing
 ```
 
 The e2e tests need the browser once: `cd web && npx playwright install chromium`.
+
+The diagram targets need D2 v0.9.0: `make d2-install` downloads the Linux x86_64 release and checks its sha256. On Windows, run them in WSL, the same path as CI. Edit the `.d2` source, render, and commit both files.
 
 More: [web platform plan](docs/WEB_PLATFORM_PLAN.md), [decisions](docs/DECISIONS.md), [data model](docs/data-model.md), [data sources](docs/data-sources.md).
 
